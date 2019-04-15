@@ -1,0 +1,1041 @@
+{
+    "Method": {
+        "Header": {
+            "SampleName": "hard minty eliquid",
+            "Info": "own mixture 12mg/ml",
+            "Operator": "Dirk",
+            "Inst": "Dirks 5971",
+            "Vial": 8
+        },
+        "Injector": {
+            "UseInjector": 2,
+            "Prewash": 0,
+            "Viscosity": 0,
+            "Pumps": 6,
+            "Quantity": 1,
+            "SolvWashA": 2,
+            "SolvWashB": 2
+        },
+        "GCParms": {
+            "OvenMax_Init": {
+                "type": "i",
+                "value": 450,
+                "range": [
+                    20,
+                    450
+                ]
+            },
+            "Oven": {
+                "Init": {
+                    "Temp": {
+                        "type": "i",
+                        "value": 70,
+                        "range": [
+                            20,
+                            450
+                        ]
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 2.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    }
+                },
+                "Final": {
+                    "Rate": {
+                        "type": "f",
+                        "value": 20.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 1.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Temp": {
+                        "type": "i",
+                        "value": 250,
+                        "range": [
+                            20,
+                            450
+                        ]
+                    }
+                },
+                "ProgA": {
+                    "Rate": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Temp": {
+                        "type": "f",
+                        "value": 50.0,
+                        "range": [
+                            0.0,
+                            450.0
+                        ],
+                        "step": 0.1
+                    }
+                },
+                "ProgB": {
+                    "Rate": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Temp": {
+                        "type": "f",
+                        "value": 50.0,
+                        "range": [
+                            0.0,
+                            450.0
+                        ],
+                        "step": 0.1
+                    }
+                },
+                "Max": {
+                    "type": "i",
+                    "value": 325,
+                    "range": [
+                        20,
+                        450
+                    ]
+                },
+                "On": {
+                    "type": "b",
+                    "value": true
+                }
+            },
+            "PressureUnits": {
+                "type": "i",
+                "value": 1,
+                "range": [
+                    1,
+                    3
+                ]
+            },
+            "ColumnA": {
+                "Length": {
+                    "type": "f",
+                    "value": 30.0,
+                    "range": [
+                        0.0,
+                        100.0
+                    ],
+                    "step": 0.1
+                },
+                "Dia": {
+                    "type": "i",
+                    "value": 530,
+                    "range": [
+                        1,
+                        600
+                    ]
+                },
+                "Gas": {
+                    "type": "i",
+                    "value": 2,
+                    "range": [
+                        1,
+                        4
+                    ]
+                },
+                "Flow": {
+                    "type": "i",
+                    "value": 0,
+                    "range": [
+                        0,
+                        1000
+                    ]
+                },
+                "VacComp": {
+                    "type": "b",
+                    "value": false
+                }
+            },
+            "ColumnB": {
+                "Length": {
+                    "type": "f",
+                    "value": 23.0,
+                    "range": [
+                        0.0,
+                        100.0
+                    ],
+                    "step": 0.1
+                },
+                "Dia": {
+                    "type": "i",
+                    "value": 250,
+                    "range": [
+                        1,
+                        600
+                    ]
+                },
+                "Gas": {
+                    "type": "i",
+                    "value": 3,
+                    "range": [
+                        1,
+                        4
+                    ]
+                },
+                "Flow": {
+                    "type": "i",
+                    "value": 0,
+                    "range": [
+                        0,
+                        1000
+                    ]
+                },
+                "VacComp": {
+                    "type": "b",
+                    "value": true
+                }
+            },
+            "Valve1": {
+                "type": "b",
+                "value": false
+            },
+            "Valve2": {
+                "type": "b",
+                "value": false
+            },
+            "EquibTime": {
+                "type": "f",
+                "value": 0.5,
+                "range": [
+                    0.0,
+                    10.0
+                ],
+                "step": 0.1
+            },
+            "Sig1": {
+                "type": "i",
+                "value": 9,
+                "range": [
+                    1,
+                    9
+                ]
+            },
+            "Sig2": {
+                "type": "i",
+                "value": 9,
+                "range": [
+                    1,
+                    9
+                ]
+            },
+            "DetA": {
+                "On": {
+                    "type": "b",
+                    "value": false
+                },
+                "HtrOn": {
+                    "type": "b",
+                    "value": false
+                },
+                "Temp": {
+                    "type": "i",
+                    "value": 50,
+                    "range": [
+                        20,
+                        450
+                    ]
+                }
+            },
+            "DetB": {
+                "On": {
+                    "type": "b",
+                    "value": false
+                },
+                "HtrOn": {
+                    "type": "b",
+                    "value": true
+                },
+                "Temp": {
+                    "type": "i",
+                    "value": 280,
+                    "range": [
+                        20,
+                        450
+                    ]
+                }
+            },
+            "InlA": {
+                "Temp": {
+                    "type": "i",
+                    "value": 50,
+                    "range": [
+                        20,
+                        450
+                    ]
+                },
+                "HtrOn": {
+                    "type": "b",
+                    "value": false
+                },
+                "ConstantFlowOn": {
+                    "type": "b",
+                    "value": false
+                },
+                "PressureProg": {
+                    "InitPressure": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "InitTime": {
+                        "type": "f",
+                        "value": 100.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "Rate": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "FinalPressure": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "FinalTime": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    },
+                    "A": {
+                        "Rate": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        },
+                        "Pressure": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        },
+                        "Time": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        }
+                    },
+                    "B": {
+                        "Rate": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        },
+                        "Pressure": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        },
+                        "Time": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                100.0
+                            ],
+                            "step": 0.1
+                        }
+                    }
+                },
+                "Purge": {
+                    "On": {
+                        "type": "b",
+                        "value": false
+                    },
+                    "TimeOn": {
+                        "type": "b",
+                        "value": false
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 0.0,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    }
+                }
+            },
+            "InlB": {
+                "Temp": {
+                    "type": "i",
+                    "value": 275,
+                    "range": [
+                        20,
+                        450
+                    ]
+                },
+                "HtrOn": {
+                    "type": "b",
+                    "value": true
+                },
+                "ConstFlowTemp": {
+                    "type": "i",
+                    "value": 70,
+                    "range": [
+                        20,
+                        450
+                    ]
+                },
+                "Pressure": {
+                    "type": "f",
+                    "value": 0.8,
+                    "range": [
+                        0.0,
+                        100.0
+                    ],
+                    "step": 0.1
+                },
+                "ConstantFlowOn": {
+                    "type": "b",
+                    "value": true
+                },
+                "Purge": {
+                    "On": {
+                        "type": "b",
+                        "value": true
+                    },
+                    "TimeOn": {
+                        "type": "b",
+                        "value": true
+                    },
+                    "Time": {
+                        "type": "f",
+                        "value": 0.9999999999999999,
+                        "range": [
+                            0.0,
+                            100.0
+                        ],
+                        "step": 0.1
+                    }
+                }
+            }
+        },
+        "MSParms": {
+            "Run": {
+                "SolventDelay": {
+                    "type": "i",
+                    "value": 180,
+                    "range": [
+                        0,
+                        3600
+                    ]
+                }
+            },
+            "Mass": {
+                "MassGain": {
+                    "type": "i",
+                    "value": -176,
+                    "range": [
+                        -4000,
+                        4000
+                    ],
+                    "floc": 2630,
+                    "ftype": "h"
+                },
+                "MassOffs": {
+                    "type": "i",
+                    "value": -5,
+                    "range": [
+                        -99,
+                        99
+                    ],
+                    "floc": 2632,
+                    "ftype": "h"
+                }
+            },
+            "Tuning": {
+                "EMVolts": {
+                    "type": "f",
+                    "value": 1588.235294117647,
+                    "range": [
+                        0,
+                        3000
+                    ],
+                    "step": 1.0,
+                    "floc": 1360,
+                    "ftype": "d"
+                },
+                "AmuGain": {
+                    "type": "f",
+                    "value": 551.0,
+                    "range": [
+                        0,
+                        1023
+                    ],
+                    "step": 1.0,
+                    "floc": 1280,
+                    "ftype": "d"
+                },
+                "EntLens": {
+                    "type": "f",
+                    "value": 24.094117647058823,
+                    "range": [
+                        0.0,
+                        128.0
+                    ],
+                    "step": 0.1,
+                    "floc": 1344,
+                    "ftype": "d"
+                },
+                "Wid219": {
+                    "type": "f",
+                    "value": -0.00529411764705881,
+                    "range": [
+                        -0.15,
+                        0.15
+                    ],
+                    "step": 0.001,
+                    "floc": 1408,
+                    "ftype": "d"
+                },
+                "TTI": {
+                    "type": "i",
+                    "value": 0.0,
+                    "range": [
+                        0,
+                        1
+                    ],
+                    "floc": 1400,
+                    "ftype": "d"
+                },
+                "Xray": {
+                    "type": "f",
+                    "value": 21.375,
+                    "range": [
+                        0.0,
+                        218.0
+                    ],
+                    "step": 0.9,
+                    "floc": 1352,
+                    "ftype": "d"
+                },
+                "Filament": {
+                    "type": "i",
+                    "value": 1.0,
+                    "range": [
+                        1,
+                        2
+                    ],
+                    "floc": 1392,
+                    "ftype": "d"
+                },
+                "Emission": {
+                    "type": "i",
+                    "value": 1.0,
+                    "range": [
+                        0,
+                        1
+                    ],
+                    "floc": 1304,
+                    "ftype": "d"
+                },
+                "PFTBA": {
+                    "type": "i",
+                    "value": 1,
+                    "range": [
+                        0,
+                        1
+                    ],
+                    "floc": 2651,
+                    "ftype": "b"
+                },
+                "EntOffs": {
+                    "type": "f",
+                    "value": 10.792156862745099,
+                    "range": [
+                        0.0,
+                        64.0
+                    ],
+                    "step": 0.01,
+                    "floc": 1416,
+                    "ftype": "d"
+                },
+                "DC Pol": {
+                    "type": "i",
+                    "value": 1.0,
+                    "range": [
+                        0,
+                        1
+                    ],
+                    "floc": 1392,
+                    "ftype": "d"
+                },
+                "Repeller": {
+                    "type": "f",
+                    "value": 14.985882352941179,
+                    "range": [
+                        0.0,
+                        19.8
+                    ],
+                    "step": 0.01,
+                    "floc": 1312,
+                    "ftype": "d"
+                },
+                "AmuOffs": {
+                    "type": "f",
+                    "value": 80.0,
+                    "range": [
+                        0,
+                        255
+                    ],
+                    "step": 1.0,
+                    "floc": 1288,
+                    "ftype": "d"
+                },
+                "IonFocus": {
+                    "type": "f",
+                    "value": 36.0,
+                    "range": [
+                        0.0,
+                        127.5
+                    ],
+                    "step": 0.5,
+                    "floc": 1320,
+                    "ftype": "d"
+                },
+                "Compound" : {
+                  "Peak1": {
+                      "type": "f",
+                      "value": 69.0,
+                      "range": [
+                          0.0,
+                          650.0
+                      ],
+                      "step": 0.1,
+                      "floc": 2668,
+                      "ftype": "d"
+                  },
+                  "Peak2": {
+                      "type": "f",
+                      "value": 219.0,
+                      "range": [
+                          0.0,
+                          650.0
+                      ],
+                      "step": 0.1,
+                      "floc": 2761,
+                      "ftype": "d"
+                  },
+                  "Peak3": {
+                      "type": "f",
+                      "value": 502.0,
+                      "range": [
+                          0.0,
+                          650.0
+                      ],
+                      "step": 0.1,
+                      "floc": 2854,
+                      "ftype": "d"
+                  }
+                },
+                "Ramp" : {
+                    "Repeller": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3210,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3218,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3226,
+                            "ftype": "d"
+                        }
+                    },
+                    "IonFocus": {
+                      "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3235,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3243,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3251,
+                            "ftype": "d"
+                        }
+                    },
+                    "EntLens": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3310,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3318,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3326,
+                            "ftype": "d"
+                        }
+                    },
+                    "EntOfs": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3535,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3543,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3551,
+                            "ftype": "d"
+                        }
+                    },
+                    "Xray": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3335,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3343,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3351,
+                            "ftype": "d"
+                        }
+                       
+                    },
+                    "AmuGain": {
+                       "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3110,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3118,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3126,
+                            "ftype": "d"
+                        } 
+                    },
+                    "AmuOfs": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3135,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3143,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3151,
+                            "ftype": "d"
+                        } 
+                    }
+                }
+            },
+            "Scan": {
+                "RangeTo": {
+                    "type": "f",
+                    "value": 425.0,
+                    "range": [
+                        1.2,
+                        650.0
+                    ],
+                    "step": 0.05,
+                    "floc": 3087,
+                    "ftype": "d"
+                },
+                "RangeFrom": {
+                    "type": "f",
+                    "value": 10.0,
+                    "range": [
+                        1.2,
+                        650.0
+                    ],
+                    "step": 0.05,
+                    "floc": 3079,
+                    "ftype": "d"
+                },
+                "Samples": {
+                    "type": "i",
+                    "value": 4,
+                    "range": [
+                        0,
+                        128
+                    ],
+                    "floc": 4369,
+                    "ftype": "h"
+                },
+                "Avg": {
+                    "type": "i",
+                    "value": 1,
+                    "range": [
+                        0,
+                        128
+                    ],
+                    "floc": 4373,
+                    "ftype": "h"
+                },
+                "Step": {
+                    "type": "f",
+                    "value": 0.1,
+                    "range": [
+                        0.05,
+                        5.0
+                    ],
+                    "step": 0.05,
+                    "floc": 4377,
+                    "ftype": "d"
+                },
+                "Threshold": {
+                    "type": "i",
+                    "value": 150,
+                    "range": [
+                        0,
+                        9999
+                    ],
+                    "floc": 3095,
+                    "ftype": "h"
+                },
+                "EDT": {
+                    "type": "i",
+                    "value": 0,
+                    "range": [
+                        0,
+                        1
+                    ]
+                }
+            }
+        }
+    }
+}
