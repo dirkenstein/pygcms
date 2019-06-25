@@ -510,7 +510,7 @@
             "Mass": {
                 "MassGain": {
                     "type": "i",
-                    "value": -176,
+                    "value": -180,
                     "range": [
                         -4000,
                         4000
@@ -532,7 +532,7 @@
             "Tuning": {
                 "EMVolts": {
                     "type": "f",
-                    "value": 1588.235294117647,
+                    "value": 1635.294117647059,
                     "range": [
                         0,
                         3000
@@ -543,7 +543,7 @@
                 },
                 "AmuGain": {
                     "type": "f",
-                    "value": 551.0,
+                    "value": 552.0,
                     "range": [
                         0,
                         1023
@@ -554,7 +554,7 @@
                 },
                 "EntLens": {
                     "type": "f",
-                    "value": 24.094117647058823,
+                    "value": 24.596078431372547,
                     "range": [
                         0.0,
                         128.0
@@ -565,7 +565,7 @@
                 },
                 "Wid219": {
                     "type": "f",
-                    "value": -0.00529411764705881,
+                    "value": -0.002941176470588225,
                     "range": [
                         -0.15,
                         0.15
@@ -627,7 +627,7 @@
                 },
                 "EntOffs": {
                     "type": "f",
-                    "value": 10.792156862745099,
+                    "value": 9.537254901960782,
                     "range": [
                         0.0,
                         64.0
@@ -659,7 +659,7 @@
                 },
                 "AmuOffs": {
                     "type": "f",
-                    "value": 80.0,
+                    "value": 77.0,
                     "range": [
                         0,
                         255
@@ -679,46 +679,46 @@
                     "floc": 1320,
                     "ftype": "d"
                 },
-                "Compound" : {
-                  "Peak1": {
-                      "type": "f",
-                      "value": 69.0,
-                      "range": [
-                          0.0,
-                          650.0
-                      ],
-                      "step": 0.1,
-                      "floc": 2668,
-                      "ftype": "d"
-                  },
-                  "Peak2": {
-                      "type": "f",
-                      "value": 219.0,
-                      "range": [
-                          0.0,
-                          650.0
-                      ],
-                      "step": 0.1,
-                      "floc": 2761,
-                      "ftype": "d"
-                  },
-                  "Peak3": {
-                      "type": "f",
-                      "value": 502.0,
-                      "range": [
-                          0.0,
-                          650.0
-                      ],
-                      "step": 0.1,
-                      "floc": 2854,
-                      "ftype": "d"
-                  }
+                "Compound": {
+                    "Peak1": {
+                        "type": "f",
+                        "value": 69.0,
+                        "range": [
+                            0.0,
+                            650.0
+                        ],
+                        "step": 0.1,
+                        "floc": 2668,
+                        "ftype": "d"
+                    },
+                    "Peak2": {
+                        "type": "f",
+                        "value": 219.0,
+                        "range": [
+                            0.0,
+                            650.0
+                        ],
+                        "step": 0.1,
+                        "floc": 2761,
+                        "ftype": "d"
+                    },
+                    "Peak3": {
+                        "type": "f",
+                        "value": 502.0,
+                        "range": [
+                            0.0,
+                            650.0
+                        ],
+                        "step": 0.1,
+                        "floc": 2854,
+                        "ftype": "d"
+                    }
                 },
-                "Ramp" : {
+                "Ramp": {
                     "Repeller": {
                         "Start": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 7.99764705882353,
                             "range": [
                                 0.0,
                                 3000.0
@@ -729,7 +729,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 19.8,
                             "range": [
                                 0.0,
                                 3000.0
@@ -740,7 +740,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 0.388,
                             "range": [
                                 0.0,
                                 3000.0
@@ -751,9 +751,9 @@
                         }
                     },
                     "IonFocus": {
-                      "Start": {
+                        "Start": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 10.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -764,7 +764,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 65.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -775,7 +775,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 1.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -799,7 +799,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 128.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -810,7 +810,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 1.003921568627451,
                             "range": [
                                 0.0,
                                 3000.0
@@ -834,7 +834,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 64.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -845,7 +845,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 1.004,
                             "range": [
                                 0.0,
                                 3000.0
@@ -869,7 +869,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 218.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -880,7 +880,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 4.275,
                             "range": [
                                 0.0,
                                 3000.0
@@ -889,10 +889,9 @@
                             "floc": 3351,
                             "ftype": "d"
                         }
-                       
                     },
                     "AmuGain": {
-                       "Start": {
+                        "Start": {
                             "type": "f",
                             "value": 0.0,
                             "range": [
@@ -905,7 +904,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 1023.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -916,7 +915,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 8.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -924,9 +923,9 @@
                             "step": 0.01,
                             "floc": 3126,
                             "ftype": "d"
-                        } 
+                        }
                     },
-                    "AmuOfs": {
+                    "AmuOffs": {
                         "Start": {
                             "type": "f",
                             "value": 0.0,
@@ -940,7 +939,7 @@
                         },
                         "Stop": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 255.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -951,7 +950,7 @@
                         },
                         "Step": {
                             "type": "f",
-                            "value": 0.0,
+                            "value": 1.0,
                             "range": [
                                 0.0,
                                 3000.0
@@ -959,7 +958,42 @@
                             "step": 0.01,
                             "floc": 3151,
                             "ftype": "d"
-                        } 
+                        }
+                    },
+                    "EMVolts": {
+                        "Start": {
+                            "type": "f",
+                            "value": 0.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3360,
+                            "ftype": "d"
+                        },
+                        "Stop": {
+                            "type": "f",
+                            "value": 3000.0,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3368,
+                            "ftype": "d"
+                        },
+                        "Step": {
+                            "type": "f",
+                            "value": 47.06,
+                            "range": [
+                                0.0,
+                                3000.0
+                            ],
+                            "step": 0.01,
+                            "floc": 3376,
+                            "ftype": "d"
+                        }
                     }
                 }
             },

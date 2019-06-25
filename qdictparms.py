@@ -256,7 +256,7 @@ class QParamArea(QWidget):
 
 
 class QStatusArea(QWidget):
-		def __init__(self, parent = None, main=None, heading=None, labels=None):
+		def __init__(self, parent = None, main=None, heading=None, labels={}):
 			super().__init__(parent)
 			self.vbox = QVBoxLayout()
 			self.cparambox = QGroupBox(heading)
@@ -266,7 +266,7 @@ class QStatusArea(QWidget):
 			#self.dummybox = QGroupBox()
 			#self.vbox.addWidget(self.dummybox)
 			self.setLayout(self.vbox)
-			self.labels = { 'Temps': ['Oven', 'InlA', 'InlB', 'DetA', 'DetB', 'PrA', 'PrB'] }
+			self.labels = labels
 			
 			
 		def status_panel(self, stv):
@@ -291,8 +291,8 @@ class QStatusArea(QWidget):
 						strv = str(v).strip()
 						
 						if len(strv) > 0:
-							if c in labels:
-								ltbl = labels[c] 
+							if c in self.labels:
+								ltbl = self.labels[c] 
 								row = 1
 								tbll = QLabel(ltbl[n2])
 								tbg.addWidget(tbll, 0, n2)

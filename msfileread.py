@@ -396,3 +396,5 @@ if __name__ == "__main__":
 	print (nearest)
 	print ((f.getTic()['abundance'].max() - f.getTic()['abundance'].min())/100)
 	plt.show()
+	f.consolidate()
+	f.plot3d()

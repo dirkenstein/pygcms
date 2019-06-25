@@ -26,6 +26,8 @@ class HP5971():
 		self.addr = busreader.BusReader.getGbpibAddr(dev)
 		self.p_step = 4
 		self.logl = logl
+		self.nrec = 0
+		self.rsar = []
 	
 	def reset(self):
 		#print ('Reset: ')
@@ -131,6 +133,14 @@ class HP5971():
 		
 		return self.esr
 
+	def massRange(self, parms, ofs):
+		mra = ':SCN:MASS:RANG %1.6f,%1.6f;*ESR?' % (parms['RangeFrom']['value']+ofs,  parms['RangeTo']['value']+ofs)
+		self.logl("Range: ",mra)
+		self.esr = self.br.cmd(self.dev, mra)
+		if int(self.esr) != 0:
+			raise HP5971Exception('Bad status register: ' + str(self.esr))
+		return self.esr
+		
 	def tuningParms(self, parms, nxt):
 		#print ('Tuning Params: ')
 		if nxt:
@@ -190,6 +200,30 @@ class HP5971():
 			raise HP5971Exception('Bad status register: ' + str(self.esr))
 		return self.esr
 	
+	def simSetup(self, mass, dwell):
+		simset = ':SIM:GRP:EDT 0;:SIM:WIDE 0;IONS:CLR;DEF %1.4f,%1.3f;*ESR?' % (mass, dwell)
+		self.logl("Simset: ", simset)
+		self.esr =  self.br.cmd(self.dev,simset)
+		if int(self.esr) != 0:
+			raise HP5971Exception('Bad status register: ' + str(self.esr))
+		return self.esr
+
+	def simAct(self):
+		act = ':SIM:GRP:ACT 0;*ESR?' 
+		self.logl("Simact: ", act)
+		self.esr =  self.br.cmd(self.dev,act)
+		if int(self.esr) != 0:
+			raise HP5971Exception('Bad status register: ' + str(self.esr))
+		return self.esr
+
+	def simRamp(self, mass, dwell, parmnam, start, stop, step):
+		sramp = ':SIM:GRP:ACT 0;EDT 0;:SIM:WIDE OFF;IONS:CLR;DEF %1.4f,%1.3f;:RMP:PROG #18SIM:STRT;PARM:NAME %s;RANG %1.4f,%1.4f;STEP %1.6f;:BUF:CLR;:RMP:STRT;*ESR?' % (mass, dwell, parmnam, start, stop, step)
+		self.logl("Simramp: ", sramp)
+		self.esr =  self.br.cmd(self.dev,sramp)
+		if int(self.esr) != 0:
+			raise HP5971Exception('Bad status register: ' + str(self.esr))
+		return self.esr
+
 	def scanSetup(self, parms, partial=False):
 		self.logl ('Scan Setup:')
 		if partial:
@@ -225,9 +259,11 @@ class HP5971():
 		self.esr= self.br.cmd(self.dev,':DAT:MODE:BRECP %i, 4086;*ESR?'% n)
 		if int(self.esr) != 0:
 			raise HP5971Exception('Bad status register: ' + str(self.esr))
+
 		return self.esr
 	
 	def readData(self):
+		self.rsar = []
 		data = self.br.cmd(self.dev,':DAT:READ?', raw=True)
 		#print (data)
 		self.statusb = self.br.statusb(self.dev)
@@ -235,8 +271,27 @@ class HP5971():
 		##while stb == last_stb:
 		##        stb = self.dev.read_stb()
 		##        print (stb)
-		self.rs = readspec.MachineSpec(data, self.logl)
+		rs = readspec.MachineSpec(data, self.logl)
+		self.readrec = rs.getReadRecords()
+		self.rsar.append(rs)
+		while self.readrec < self.nrec:
+			data = self.br.cmd(self.dev,':DAT:READ?', raw=True)
+			self.statusb = self.br.statusb(self.dev)
+			rs = readspec.MachineSpec(data, self.logl)
+			self.readrec = self.readrec + rs.getReadRecords()
+			self.rsar.append(rs)
+		#reset nrecs for a single read
+		self.nrec = 0
 		
+	def merge(self):
+		spcs = self.rsar
+		l = len(spcs)
+		if  l > 1:
+			s0 = spcs[0]
+			for r in range(1,l):
+				s0.merge(spcs[r])
+			self.rsar = [s0]
+			
 	def getConfig(self, progress=None):
 		if progress is None:
 			progress=HP5971.emit_dummy 
@@ -352,9 +407,12 @@ class HP5971():
 		self.logl("ScanDone")
 		self.scanDone(progress, moreScans=moreScans)
 	
-	def getSpec(self):
+	def getSpec(self, n = 0):
 		#return self.rs.getSpectrum()
-		return self.rs
+		return self.rsar[n]
+	def getSpecs(self):
+		#return self.rs.getSpectrum()
+		return self.rsar
 	def getStoredConfig(self):
 		return {'Fault' : self.faultstat,
 		'SourceTemp':self.sourceTemp ,
