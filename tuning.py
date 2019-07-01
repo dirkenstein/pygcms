@@ -3,8 +3,8 @@ import copy
 import numpy as np
 import scipy
 import pandas 
-import peakdetect
-import math 
+import math
+import putil 
 
 class HP5971Tuning():
 	def __init__(self,msd, parms, logl=print):
@@ -28,11 +28,12 @@ class HP5971Tuning():
 		self.parms.update({'Tuning': self.defaultTuningParms})
 		return self.parms
 
-	def readAScanAb(self):
+	def readAScanAb(self, n=0):
 		 self.hpmsd.scanStart(partial=True)
 		 self.hpmsd.dataMode(1)
 		 self.hpmsd.readData()
 		 self.abPw50()
+		 self.emitScan(n)
 		 
 	def stdSetupAb(self):
 		self.hpmsd.filtSetupStd()
@@ -95,11 +96,8 @@ class HP5971Tuning():
 	def abPw50(self):
 		i = self.hpmsd.getSpecs()[0].getSpectrum()['ions']
 		self.maxab =i['abundance'].max()
-		maxtab, mintab = peakdetect.peakdet(i['abundance'],(i['abundance'].max() - i['abundance'].min())/100, i['m/z'])
-		self.maxima = pandas.DataFrame(np.array(maxtab), columns=['m/z', 'abundance'])
-		if len(mintab) > 0:
-			self.minima = pandas.DataFrame(np.array(mintab), columns=['m/z', 'abundance'])
-				#sels= []
+		self.maxima, self.minima = putil.PUtil.peaksfr(i, 'abundance', 'm/z')
+		#		#sels= []
 				#for idx, r in self.maxima.iterrows():
 					#sels.append((False, None, None))
 				#self.sels = sels
@@ -118,17 +116,17 @@ class HP5971Tuning():
 		
 		self.stdSetupAb()
 		self.setupMass1Ab()
-		self.readAScanAb()
+		self.readAScanAb(0)
 		self.maxabs[0] = self.maxab
 		self.logl("mass1 ab ",self.maxabs[0] )
 
 		self.hpmsd.scanSetup(self.mass[1], partial=True)
-		self.readAScanAb()
+		self.readAScanAb(1)
 		self.maxabs[1] = self.maxab
 		
 		self.logl("mass2 ab ",self.maxabs[1] )
 		self.hpmsd.scanSetup(self.mass[2], partial=True)
-		self.readAScanAb()
+		self.readAScanAb(2)
 		self.maxabs[2] = self.maxab
 		self.logl("mass3 ab ",self.maxabs[2] )
 
@@ -151,18 +149,18 @@ class HP5971Tuning():
 							
 				self.stdSetupAb()
 				self.setupMass1Ab()
-				self.readAScanAb()
+				self.readAScanAb(0)
 				self.maxabs[0] = self.maxab
 					
 				self.logl("mass1 ab ",self.maxabs[0] )
 			
 				self.hpmsd.scanSetup(self.mass[1], partial=True)
-				self.readAScanAb()
+				self.readAScanAb(1)
 				self.maxabs[1] = self.maxab
 				self.logl("mass2 ab ", self.maxabs[1])
 
 				self.hpmsd.scanSetup(self.mass[2], partial=True)
-				self.readAScanAb()
+				self.readAScanAb(2)
 				self.maxabs[2] = self.maxab
 				self.logl("mass3 ab ", self.maxabs[2])
 		
@@ -182,7 +180,7 @@ class HP5971Tuning():
 
 		self.stdSetupAb()
 		self.setupMass1Ab()
-		self.readAScanAb()
+		self.readAScanAb(0)
 		self.pws[0] = self.fwhm
 		self.logl("mass1 pw ", self.pws[0])
 
@@ -190,9 +188,9 @@ class HP5971Tuning():
 		self.hpmsd.tuningParms(self.defaultTuningParms, nxt=True)
 		self.stdSetupAb()
 		self.hpmsd.scanSetup(self.mass[secondpeak], partial=True)
-		self.readAScanAb()
+		self.readAScanAb(secondpeak)
 		self.pws[secondpeak] = self.fwhm
-		self.logl("mass3 pw ", self.pws[2])
+		self.logl("massx pw ", self.pws[secondpeak])
 		ideal = 0.5
 		pwr =  self.pws[secondpeak]/self.pws[0]
 		pwo = self.pws[0] - ideal 
@@ -209,10 +207,11 @@ class HP5971Tuning():
 		self.updatedTuningParms = copy.deepcopy(self.defaultTuningParms)
 		gainstep = self.step(self.updatedTuningParms, 'AmuGain')
 		ofsstep = self.step(self.updatedTuningParms, 'AmuOffs')
-		while pwo > limit or pwos > limit or abs(1-pwr) > limit:
+		while abs(pwo) > limit or abs(pwos) > limit or abs(1-pwr) > limit:
 			ogain = self.ov(self.updatedTuningParms, 'AmuGain')
 			oofs = self.ov(self.updatedTuningParms, 'AmuOffs')
-			if pwo > limit2 or pwos > limit2 or abs(1-pwr) > limit2:
+			if abs(pwo) > limit2 or abs(pwos) > limit2 or abs(1-pwr) > limit2:
+				self.logl("step width adj")
 				if pwos > 0:
 					ngain = ogain + gainstep
 				else:
@@ -222,11 +221,12 @@ class HP5971Tuning():
 				else:
 					nofs = oofs - ofsstep
 				if abs(opwo) > abs(pwo):
-					offstep = offstep /2  
-				if  abs(opwos) > abs(pwos):
-					gainstep = gainstep /2  
+					offstep = offstep /2
+				if abs(opwos) > abs(pwos):
+					gainstep = gainstep /2
 			else:
 			#self.updatedTuningParms = self.rampAmuOfs(self.ratioAmuGain(self.updatedTuningParms, ganr), gano)
+				self.logl("small width adj")
 				ngain = ogain + (pwos + self.tunepk[0]/self.tunepk[secondpeak]*pwo)/2
 				nofs = oofs + (pwo + pwos)/4
 
@@ -237,7 +237,7 @@ class HP5971Tuning():
 			self.hpmsd.tuningParms(self.updatedTuningParms, nxt=True)
 			self.stdSetupAb()
 			self.setupMass1Ab()
-			self.readAScanAb()
+			self.readAScanAb(0)
 			self.pws[0] = self.fwhm
 			self.logl("mass1 pw ", self.pws[0])
 
@@ -246,7 +246,7 @@ class HP5971Tuning():
 			self.hpmsd.tuningParms(self.updatedTuningParms, nxt=True)
 			self.stdSetupAb()
 			self.hpmsd.scanSetup(self.mass[2], partial=True)
-			self.readAScanAb()
+			self.readAScanAb(2)
 			self.pws[secondpeak] = self.fwhm
 			self.logl("mass%i pw " % (secondpeak+1), self.pws[2])
 			opwo =  pwo
@@ -273,25 +273,25 @@ class HP5971Tuning():
 		self.hpmsd.tuningParms(self.updatedTuningParms, nxt=True)
 		self.stdSetupAb()
 		self.setupMass1Ab()
-		self.readAScanAb()
+		self.readAScanAb(0)
 		self.logl("mass1 ab: ", self.maxab, " pw ", self.fwhm)
 
 
 		self.hpmsd.scanSetup(self.mass[1], partial=True)
-		self.readAScanAb()
+		self.readAScanAb(1)
 		self.logl("mass2 ab: ", self.maxab, " pw ", self.fwhm)
 
 
 		self.hpmsd.scanSetup(self.mass[2], partial=True)
-		self.readAScanAb()
+		self.readAScanAb(2)
 		self.logl("mass3 ab: ", self.maxab, " pw ", self.fwhm)
 		self.defaultTuningParms = self.updatedTuningParms
 
-	def scanRepMx(self):
+	def scanRepMx(self, n):
 		summz = 0
 		sumab = 0
 		for x in range(5):
-			self.readAScanMx()
+			self.readAScanMx(n)
 			summz += self.mzofmax
 			sumab += self.maxab
 		self.avgmz = summz / 5
@@ -302,11 +302,12 @@ class HP5971Tuning():
 		self.hpmsd.massRange(self.mass[0], 0)
 		self.hpmsd.clearBuf()
 		self.hpmsd.scanSetup(self.mass[0], partial=False)
-	def readAScanMx(self):
+	def readAScanMx(self, n):
 		self.hpmsd.scanStart(partial=False)
 		self.hpmsd.dataMode(1)
 		self.hpmsd.readData()
 		self.mzaxis()
+		self.emitScan(n)
 	def stdSetupMx(self):
 		self.fault = self.hpmsd.getFaultStat()
 		self.hpmsd.rvrOn()
@@ -324,26 +325,25 @@ class HP5971Tuning():
 			idx = i['abundance'].idxmax()
 			#self.mzofmax = i['m/z'].iloc(idx)
 			self.mzofmax = i.iloc[idx]['m/z']
-			
 			self.logl ("maxab: ", self.maxab, " idx:" , idx, " m/z: ", self.mzofmax)
 			
 	def axis(self, secondpeak):
 		self.stdSetupMx()
 		self.hpmsd.massParms( self.defaultMassParms)
 		self.setupMass1Mx()
-		self.scanRepMx()
+		self.scanRepMx(0)
 		mz1 = self.avgmz 
 		ab1 = self.avgab
 		self.hpmsd.massRange(self.mass[0], 0.05)
-		self.scanRepMx()
+		self.scanRepMx(0)
 		mz1o = self.avgmz
 		ab1o = self.avgab
 		self.hpmsd.massRange(self.mass[secondpeak], 0)
-		self.scanRepMx()
+		self.scanRepMx(secondpeak)
 		mz2 = self.avgmz
 		ab2 = self.avgab
 		self.hpmsd.massRange(self.mass[secondpeak], 0.05)
-		self.scanRepMx()
+		self.scanRepMx(secondpeak)
 		mz2o = self.avgmz
 		ab2o = self.avgab
 		
@@ -389,22 +389,22 @@ class HP5971Tuning():
 		self.correctedMassParms = self.nv(self.nv(self.defaultMassParms, 'MassGain', nmasg), 'MassOffs', nmaso)
 		self.hpmsd.massParms(self.correctedMassParms)
 		self.setupMass1Mx()
-		self.scanRepMx()
+		self.scanRepMx(0)
 		mz1 = self.avgmz 
 		ab1 = self.avgab
 		
 		self.hpmsd.massRange(self.mass[0], 0.05)
-		self.scanRepMx()
+		self.scanRepMx(0)
 		mz1o = self.avgmz 
 		ab1o = self.avgab
 
 		self.hpmsd.massRange(self.mass[2], 0)
-		self.scanRepMx()
+		self.scanRepMx(1)
 		mz3 = self.avgmz
 		ab3 = self.avgab
 
 		self.hpmsd.massRange(self.mass[2], 0.05)
-		self.scanRepMx()
+		self.scanRepMx(2)
 		mz3o = self.avgmz
 		ab3o = self.avgab
 
@@ -465,21 +465,38 @@ class HP5971Tuning():
 		self.hpmsd.rvrOff()
 	
 	def rampMax(self):
-		i = self.hpmsd.getSpecs()[0].getSpectrum()['ramp']
+		i = self.hpmsd.getSpecs()[0].ramp
 		self.maxramp =i['abundance'].max()
-		maxtab, mintab = peakdetect.peakdet(i['abundance'],(i['abundance'].max() - i['abundance'].min())/100, i['voltage'])
-		self.rampmaxima = pandas.DataFrame(np.array(maxtab), columns=['voltage', 'abundance'])
-		if len(mintab) > 0:
-			self.rampminima = pandas.DataFrame(np.array(mintab), columns=['voltage', 'abundance'])
-
-	def readRampRecs(self, parm):
-		n = self.hpmsd.getNrec()
-		self.hpmsd.dataMode(n)
+		maxidx = i['abundance'].idxmax()
+		maxvidx = i['voltage'].idxmax()
+		self.voltofmax = i.iloc[maxidx]['voltage']
+		self.rampmaxima, self.rampminima = putil.PUtil.peaksfr(i,'abundance','voltage')
+		if not self.rampmaxima.empty:
+			# = pandas.DataFrame(np.array(maxtab), columns=['voltage', 'abundance'])
+			idxm = self.rampmaxima['abundance'].idxmax()
+			self.voltofmax = self.rampmaxima.iloc[idxm]['voltage']
+			
+		#if len(mintab) > 0:
+		#	self.rampminima = pandas.DataFrame(np.array(mintab), columns=['voltage', 'abundance'])
+		self.avgvol = i['voltage'].mean()
+		self.avgab = i['abundance'].mean()
+		nearest = putil.PUtil.nearest(i, 'abundance', self.avgab)
+		self.voltofavg =  nearest.iloc[0]['voltage']
+		if maxidx == maxvidx:
+			self.chosenvoltage = self.voltofavg
+		else:
+			self.chosenvoltage = self.voltofmax
+		
+	def readRampRecs(self, parm, n=0):
+		nrec = self.hpmsd.getNrec()
+		self.hpmsd.dataMode(nrec)
 		self.hpmsd.readData()
 		self.hpmsd.merge()
-		self.hpmsd.rampBuild( self.start(self.defaultTuningParms, parm), self.step(self.defaultTuningParms, parm))
-		self.hpmsd.plotramp()
-
+		self.hpmsd.getSpecs()[0].rampBuild( self.start(self.defaultTuningParms, parm), self.step(self.defaultTuningParms, parm))
+		self.rampMax()
+		ovolt = self.ov(self.defaultTuningParms , parm)
+		self.emitRamp(n, parm, ovolt)
+		
 	def rampIt(self, mass, nam, parm, dwell=35):
 		self.rampInit()
 		self.rampPrep()
@@ -498,19 +515,31 @@ class HP5971Tuning():
 		self.doRamp("ENT", "EntLens", 35)
 
 	def rampEntOfs(self):
-		self.doRamp("ENTO", "EntOfs", 35)
+		self.doRamp("ENTO", "EntOffs", 35)
 	
 	def rampXray(self):
 		self.doRamp("XRAY", "Xray", 35)
 	
 	def doRamp(self, nam, parm, dwell):
+		self.rampv = [0, 0, 0]
 		self.rampInit()
 		self.rampPrep()
 		self.rampIt(self.tunepk[0], nam, parm, dwell)
-		self.readRampRecs(parm)
+		self.readRampRecs(parm, 0)
+		self.rampv[0] = self.chosenvoltage
 		self.rampPrep()
 		self.rampIt(self.tunepk[1], nam, parm, dwell)
-		self.readRampRecs(parm)
+		self.readRampRecs(parm, 1)
+		self.rampv[1] = self.chosenvoltage
 		self.rampPrep()
 		self.rampIt(self.tunepk[2], nam, parm, dwell)
-		self.readRampRecs(parm)
+		self.readRampRecs(parm, 2)
+		self.rampv[2] = self.chosenvoltage
+		newv = math.fsum(self.rampv)/len(self.rampv)
+		print ("New voltage: ", newv)
+		self.defaultTuningParms = self.nv (self.defaultTuningParms, parm, newv)
+		
+	def emitScan(self, n):
+		self.hpmsd.getSpecs()[0].plotit(name = ' ' + str(self.tunepk[n]))
+	def emitRamp(self, n, parm, ovolt):
+		self.hpmsd.getSpecs()[0].plotrampit(' ' +parm + ' ' + str(self.tunepk[n]), currvolt=ovolt)

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-import peakdetect
+import putil
 import peakutils
 import numpy as np
 import pandas
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
 			app = bar.addMenu("Application")
 			prefact = app.addAction("Preferences")
 			prefact.triggered.connect(self.preferences)
-			file = bar.addMenu("File")
+			file = bar.addMenu("&File")
 			file.addAction("Load")
 			file.addAction("Save MSP")
 			file.addAction("Save Raw")
@@ -55,14 +55,14 @@ class MainWindow(QMainWindow):
 			file.addSeparator()
 			file.triggered[QAction].connect(self.fileaction)
 			self.updateRecentFileActions()
-			window = bar.addMenu("Window")
+			window = bar.addMenu("&Window")
 			#window.addAction("New")
 			window.addAction("cascade")
 			window.addAction("Tiled")
 			window.triggered[QAction].connect(self.windowaction)
 			self.create_status_bar()
 			#self.mdi.subWindowActivated.connect(self.updateMenus)
-			chrom = bar.addMenu("Chromatogram")
+			chrom = bar.addMenu("&Chromatogram")
 			chrom.addAction("Peak Find")
 			chrom.addAction("Baseline")
 			chrom.addAction("Autointegrate")
@@ -72,12 +72,27 @@ class MainWindow(QMainWindow):
 			subact.triggered.connect(self.subtractAction)
 			nistact = spec.addAction("Launch NIST")
 			nistact.triggered.connect(self.launchNISTAction)
+			hlp = bar.addMenu("&Help")
+			aboutact = hlp.addAction("About")
+			aboutact.triggered.connect(self.on_about)
+
 			self.paths = QPathSettings() 
 			self.colors = QColorSettings()
 
 			self.setWindowTitle("MSDisplay")
 			self.registers = []
 			self.running_subtract = False
+	
+	def on_about(self):
+		msg = """
+       MSDisplay
+ * HP Chemstation .MS Reader:
+ *Reads .MS spectrum files
+ *Provides basic chromatogram analysis
+ * (C)2019 Dirk Niggemann
+"""
+		QMessageBox.about(self, "About MSDisplay", msg.strip())
+	
 			
 	def doChromAction(self, q):
 			act = self.activeMdiChild()
@@ -622,9 +637,9 @@ class QTICArea(QWidget):
 
 	def peak_detect(self):
 			i = self.runfile.getTic()
-			maxtab, mintab = peakdetect.peakdet(i['abundance'],(i['abundance'].max() - i['abundance'].min())/100, i['retention_time'])
-			self.maxima = pandas.DataFrame(np.array(maxtab), columns=['retention_time', 'abundance'])
-			self.minima = pandas.DataFrame(np.array(mintab), columns=['retention_time', 'abundance'])
+			self.maxima, self.minima = putil.PUtil.peaksfr(i, 'abundance','retention_time')
+			#self.maxima = pandas.DataFrame(np.array(maxtab), columns=['retention_time', 'abundance'])
+			#self.minima = pandas.DataFrame(np.array(mintab), columns=['retention_time', 'abundance'])
 			sels= []
 			for idx, r in self.maxima.iterrows():
 				sels.append((False, None, None))
@@ -694,14 +709,14 @@ class QTICArea(QWidget):
 				ranges=[]
 				
 				for m in self.maxima['retention_time']:
-					nearest = mr.ReadMSFile.strad(self.minima, 'retention_time', m)
+					nearest = putil.PUtil.strad(self.minima, 'retention_time', m)
 					#print (nearest)
 					strt = nearest['retention_time'].min()
 					end = nearest['retention_time'].max()
 					#print("RTStr, end: ", strt, end)
 
-					istrt = mr.ReadMSFile.nearest(i, 'retention_time', strt).iloc[0].name
-					iend = mr.ReadMSFile.nearest(i, 'retention_time', end).iloc[0].name
+					istrt = putil.PUtil.nearest(i, 'retention_time', strt).iloc[0].name
+					iend = putil.PUtil.nearest(i, 'retention_time', end).iloc[0].name
 					if istrt == iend:
 						print ('0-width peak: ',m)
 						if m == self.maxima['retention_time'].iloc[-1]:

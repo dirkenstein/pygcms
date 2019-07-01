@@ -11,14 +11,297 @@ import copy
 import time
 import datetime
 import traceback
+import msfileread as msfr
 
+class threadRunner():
+		def __init__(self,  parent, main, method, msparms, methname, fname, scan_thread, showNewScan, logl=print, forRun=False):
+			self.progress_thread = QThread()
+			self.progress_thread_o = None
+			
+			self.init_thread = QThread()
+			self.init_thread_o = None
+			
+			self.status_thread = QThread()
+			self.status_thread_o = None
+			self.status_timer = None
+			self.init = False
+			self.scanning = False
+			self.running = False
+			self.parent = parent
+			self.main = main
+			self.method = method
+			self.msparms = msparms
+			self.logl = logl
+			self.scan_thread = scan_thread
+			self.showNewScan = showNewScan
+			self.forRun = forRun 
+			self.fname = fname
+			self.methname = methname
+			
+		def on_init(self):
+				#self.logl("Reinit")
+				self.init =False
+				self.parent.reinit_button.setEnabled(False)
+				if self.parent.run_button:
+					self.parent.run_button.setEnabled(False)
+				if self.parent.scan_button:
+					self.parent.scan_button.setEnabled(False)
+				if self.parent.ledbox:
+					self.parent.ledbox.turnOff(0)
+					self.parent.ledbox.turnOff(1)
+					self.parent.ledbox.turnOff(2)
+				self.main.statusBar().showMessage('Initializing..', 1000)
+				QThread.yieldCurrentThread()
+				
+				if not self.init_thread.isRunning():
+					#self.logl("No init Thread")
+					self.init_thread_o = initThread(self.method, self.logl, forRun=self.forRun)
+					self.init_thread_o.progress_update.connect(self.updateProgressBar)
+					self.init_thread_o.inst_status.connect(self.instStatus)
+					self.init_thread_o.init_status.connect(self.setInitialized)
+					self.init_thread_o.moveToThread(self.init_thread)
+					self.init_thread_o.run_init.connect(self.init_thread_o.doInit)
+					self.init_thread_o.run_stop.connect(self.init_thread_o.doStop)
 
+					#self.init_thread.started.connect(self.init_thread_o.doInit)
+					self.init_thread.start()
+					self.init_thread_o.run_init.emit()
+				else:
+					#self.logl("Restart Init Thread")
+					self.init_thread_o.init_msd = False
+					self.init_thread_o.init_gc = False
+					self.init_thread_o.init_inj = False
+					self.init_thread_o.init = False
+					self.init_thread_o.run_init.emit()
+		
+		def on_scan(self):
+				self.scanning =True
+				self.parent.scan_button.setEnabled(False)
+				if self.parent.run_button:
+					self.parent.run_button.setEnabled(False)
+				self.main.progress.setValue(0)
+				self.main.statusBar().showMessage('Scanning..', 2000)
+
+				if not self.progress_thread.isRunning():
+					self.progress_thread_o = self.scan_thread(self.hpmsd, self.msparms, logl=self.logl)
+					self.progress_thread_o.progress_update.connect(self.updateProgressBar)
+					self.progress_thread_o.scan_done.connect(self.showNewScan)
+					self.progress_thread_o.scan_status.connect(self.showScanStatus)
+					self.progress_thread_o.scan_info.connect(self.showScanInfo)
+					self.progress_thread_o.run_stop.connect(self.progress_thread_o.doStop)
+
+					self.progress_thread_o.moveToThread(self.progress_thread)
+					#self.progress_thread.started.connect(self.progress_thread_o.doScan)
+					self.progress_thread_o.run_scan.connect(self.progress_thread_o.doScan)
+					self.progress_thread.start()
+					self.progress_thread_o.run_scan.emit()
+				else:
+					self.progress_thread_o.run_scan.emit()
+
+		def on_run(self):
+			if len(self.fname) > 0:
+				self.running =True
+				if self.parent.run_button:
+					self.parent.run_button.setEnabled(False)
+				if self.parent.scan_button:
+					self.parent.scan_button.setEnabled(False)
+				self.main.progress.setValue(0)
+				self.main.statusBar().showMessage('Run..', 2000)
+				if not self.progress_thread.isRunning():
+					
+					self.progress_thread_o = runProgressThread(self.fname, self.methname, self.hpmsd, self.hpgc, self.hpinj, self.method, self.logl)
+					self.progress_thread_o.progress_update.connect(self.updateProgressBar)
+					self.progress_thread_o.run_spec.connect(self.showNewScan)
+					self.progress_thread_o.run_done.connect(self.showRunStatus)
+					self.progress_thread_o.ms_status_update.connect(self.onStatusUpdate)
+					self.progress_thread_o.gc_status_update.connect(self.onStatusUpdateGc)
+					self.progress_thread_o.inj_status_update.connect(self.onStatusUpdateInj)
+
+					self.progress_thread_o.moveToThread(self.progress_thread)
+					#self.progress_thread.started.connect(self.progress_thread_o.doRun)
+					self.progress_thread_o.run_progress.connect(self.progress_thread_o.doRun)
+					self.progress_thread_o.run_stop.connect(self.progress_thread_o.endRun)
+					#self.run_stop.connect(self.endRun)
+
+					self.progress_thread.start()
+					self.progress_thread_o.run_progress.emit()
+
+				else:
+					self.progress_thread_o.run_progress.emit()
+			else:
+				self.main.statusBar().showMessage('File Name Not Set', 10000)
+
+		def on_stop(self):
+			if self.progress_thread_o:
+				self.progress_thread_o.run_stop.emit()
+
+	
+		def updateProgressBar(self, maxVal):
+			uv = self.main.progress.value() + maxVal
+			if maxVal == 0:
+				 uv = 0
+			if uv > 100:
+				 uv = 100
+			self.main.progress.setValue(uv)
+		
+		def showScanStatus(self,ok, emsg):
+			if self.parent.scan_button:
+				self.parent.scan_button.setEnabled(True)
+				if ok:
+					self.main.statusBar().showMessage('Scan Done: ' + emsg, 2000)
+					self.main.progress.setValue(100)
+				else:
+					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
+					self.main.progress.setValue(0)
+				self.scanning = False
+		
+		def instStatus(self, hpms, hpgc, hpinj):
+			#print(hpms, hpgc, hpinj)
+			if self.parent.ledbox:
+				self.parent.ledbox.turnOn(0, hpms)
+				self.parent.ledbox.turnOn(1, hpgc)
+				self.parent.ledbox.turnOn(2, hpinj)
+		
+		def showScanInfo(self, emsg):
+			self.main.statusBar().showMessage('Scan Info: ' + emsg, 4000)
+		
+		def doStatusThread(self):
+			if not self.status_thread.isRunning():
+				self.status_thread_o = statusThread(self.hpmsd, self.hpgc, self.logl)
+				self.status_thread_o.progress_update.connect(self.updateProgressBar)
+				self.status_thread_o.ms_status_update.connect(self.onStatusUpdate)
+				self.status_thread_o.gc_status_update.connect(self.onStatusUpdateGc)
+
+				self.status_thread_o.moveToThread(self.status_thread)
+				self.status_thread_o.run_status.connect(self.status_thread_o.do_st)
+				self.status_thread_o.run_stop.connect(self.status_thread_o.doStop)
+
+				self.status_thread.start()
+			self.status_timer = QTimer()
+			self.status_timer.setSingleShot(False)        
+			self.status_timer.timeout.connect(self.doGetStatus)
+			self.status_timer.start(5000)
+		
+
+		
+		def setInitialized(self,ok, emsg):
+				if ok:
+					self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
+					self.hpmsd = self.init_thread_o.getMsd()
+					self.hpgc = self.init_thread_o.getGc()
+					self.hpinj = self.init_thread_o.getInj()
+
+					self.main.progress.setValue(100)
+					if self.parent.run_button:
+						self.parent.run_button.setEnabled(True)
+					if self.parent.scan_button:
+						self.parent.scan_button.setEnabled(True)
+					self.parent.reinit_button.setEnabled(True)
+					self.init = True
+					self.doStatusThread()
+				else:
+					self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
+					self.main.progress.setValue(0)
+					
+		def doGetStatus(self):
+				if (not self.running) and (not self.scanning) and self.init:
+					self.main.progress.setValue(0)
+					if self.parent.run_button:
+						self.parent.run_button.setEnabled(False)
+					self.parent.reinit_button.setEnabled(False)
+					if self.parent.scan_button:
+						self.parent.scan_button.setEnabled(False)
+					self.status_thread_o.run_status.emit(True)
+	
+		def onStatusUpdate(self, conf):
+				if not self.running and not self.scanning:
+					if self.parent.run_button:
+						self.parent.run_button.setEnabled(True)
+					if self.parent.scan_button:
+						self.parent.scan_button.setEnabled(True)
+
+					self.parent.reinit_button.setEnabled(True)
+
+				if not 'Error' in conf:
+					self.parent.ms_status_area.status_panel(conf)
+					#self.parent.paramtabs.status_panel(conf)
+					#self.on_draw()
+
+				else:
+					self.main.statusBar().showMessage('Status  Error: ' + conf['Error'], 10000)
+					self.main.progress.setValue(0)
+
+		def onStatusUpdateGc(self, conf):
+				if not self.running:
+					if self.parent.run_button:
+						self.parent.run_button.setEnabled(True)
+					self.parent.reinit_button.setEnabled(True)
+					if self.parent.scan_button:
+						self.parent.scan_button.setEnabled(True)
+
+				if not 'Error' in conf:
+					self.parent.gc_status_area.status_panel(conf)
+					#self.on_draw()
+
+				else:
+					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
+					self.main.progress.setValue(0)
+
+		def onStatusUpdateInj(self, conf):
+				if not 'Error' in conf:
+					self.parent.inj_status_area.status_panel(conf)
+					#self.on_draw()
+				else:
+					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
+					self.main.progress.setValue(0)
+
+		def showRunStatus(self,ok, emsg):
+			if self.parent.run_button:
+				self.parent.run_button.setEnabled(True)
+			if self.parent.scan_button:
+				self.scan_button.setEnabled(True)
+
+				if ok:
+					self.main.statusBar().showMessage('Run Done: ' + emsg, 2000)
+					self.hpmsd = self.init_thread_o.getMsd()
+					self.hpgc = self.init_thread_o.getGc()
+					self.main.progress.setValue(100)
+				else:
+					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
+					self.main.progress.setValue(0)
+				self.running = False						 
+		def updateFname(self,fname):
+			self.fname = fname
+		def updateMethod(self, method):
+			self.method = method
+		def updateMsParms(self, msparms):
+			self.msparms = msparms
+		def updateParent(self , parent):
+			self.parent = parent
+		def on_close(self):
+			self.logl("closing threads")
+			if self.status_timer:
+				self.status_timer.stop()
+			if self.progress_thread_o:
+				self.progress_thread_o.run_stop.emit()
+				self.progress_thread.terminate()
+
+			if self.init_thread_o:
+				self.init_thread_o.run_stop.emit()
+				self.init_thread.terminate()
+
+			if self.status_thread_o:
+				self.status_thread_o.run_stop.emit()
+				self.status_thread.terminate()
+	
+		
 class initThread(QObject):
 		init_status = pyqtSignal(bool,str)
 		progress_update = pyqtSignal(int)
 		inst_status = pyqtSignal(bool, bool, bool)
 		run_init = pyqtSignal()
 		update_init = pyqtSignal()
+		run_stop = pyqtSignal()
 
 		def __init__(self, method, logl, forRun=False):
 				QObject.__init__(self)
@@ -30,6 +313,9 @@ class initThread(QObject):
 				self.init = False
 				self.logl = logl
 				self.forRun = forRun
+				self.hpmsd = None
+				self.hpgc = None
+				self.hpinj = None
 				#self.run_init.connect(self.doInit)
 
 				
@@ -104,8 +390,8 @@ class initThread(QObject):
 					if not self.init_inj and self.method and self.forRun:
 						try:	 
 							self.inj = self.br.deviceByName('7673')
-							self.hpi = hp7673.HP7673(self.inj, self.br, self.method['Method']['Injector']['UseInjector'], self.hpgc.addr, self.logl)
-							self.logl(self.hpi.reset())
+							self.hpinj = hp7673.HP7673(self.inj, self.br, self.method['Method']['Injector']['UseInjector'], self.hpgc.addr, self.logl)
+							self.logl(self.hpinj.reset())
 							self.init_inj = True
 							self.inst_status.emit(self.init_msd, self.init_gc, self.init_inj)
 						except Exception as e:
@@ -113,7 +399,7 @@ class initThread(QObject):
 							self.logl(traceback.format_exc())
 							self.init_status.emit(False, str(e))
 							time.sleep(stime)
-					if (self.init_inj or not self.method or not self.forRun) and self.init_msd and (self.init_gc or not self.method or not self.forRun):
+					if self.init_msd and (self.init_inj or not self.method or not self.forRun) and (self.init_gc or not self.method or not self.forRun):
 						self.progress_update.emit(100)
 						self.init = True
 						self.init_status.emit(True, 'OK')
@@ -128,39 +414,11 @@ class initThread(QObject):
 			return self.hpgc
 			
 		def getInj(self):
-			return self.hpi
-
-
-class configThread(QObject):
-		config_update = pyqtSignal(dict)
-		progress_update = pyqtSignal(int)
-		run_config = pyqtSignal()
-
-		update_config = pyqtSignal(hp5971.HP5971)
+			return self.hpinj
 		
-		def __init__(self, hpmsd, logl=print):
-				QObject.__init__(self)
-				self.hpmsd = hpmsd
-				#self.run_config.connect(self.do_gc)
-				self.logl = logl
-		def __del__(self):
+		def doStop(self):
 			pass
-			#self.wait()
-		def updateDevices(self, hpmsd):
-				self.hpmsd = hpmsd
 
-		def do_gc(self):
-					try:
-						ret = self.hpmsd.getConfig(self.progress_update.emit)
-						self.config_update.emit(ret)
-						self.progress_update.emit(100)
-
-					except Exception as e:
-						self.logl ('Exc ' + str(e))
-						self.logl(traceback.format_exc())
-						self.config_update.emit({'Error' : str(e)})
-		#def run(self):
-		#		time.sleep(1)
 
 class statusThread(QObject):
 		ms_status_update = pyqtSignal(dict)
@@ -169,7 +427,8 @@ class statusThread(QObject):
 		progress_update = pyqtSignal(int)
 		run_status = pyqtSignal(bool)
 		update_status = pyqtSignal(hp5971.HP5971, hp5890.HP5890, hp7673.HP7673)
-		
+		run_stop = pyqtSignal()
+
 		def __init__(self, hpmsd, hpgc, logl=print):
 				QObject.__init__(self)
 				self.hpmsd = hpmsd
@@ -191,8 +450,9 @@ class statusThread(QObject):
 						ret.update(ret2)
 						self.ms_status_update.emit(ret)
 						
-						ret3 = self.hpgc.statcmds(self.progress_update.emit)
-						self.gc_status_update.emit(ret3)
+						if self.hpgc:
+							ret3 = self.hpgc.statcmds(self.progress_update.emit)
+							self.gc_status_update.emit(ret3)
 
 						self.progress_update.emit(100)
 
@@ -201,17 +461,20 @@ class statusThread(QObject):
 						self.logl(traceback.format_exc())
 
 						self.ms_status_update.emit({'Error' : str(e)})
-		#def run(self):
-		#		time.sleep(1)
-					 
-					 
+		
+		def doStop(self):
+			pass
+
 
 class scanThread(QObject):
 		progress_update = pyqtSignal(int)
-		scan_done = pyqtSignal(readspec.ReadSpec)
+		scan_done = pyqtSignal(list)
 		scan_status = pyqtSignal(bool, str)
+		scan_info = pyqtSignal(str)
+
 		run_scan = pyqtSignal()
 		update_scan = pyqtSignal(hp5971.HP5971)
+		run_stop = pyqtSignal()
 
 		def __init__(self, hpmsd, parms, logl=print):
 				QObject.__init__(self)
@@ -233,11 +496,11 @@ class scanThread(QObject):
 				try:
 					#self.scan_status.emit(True, 'Starting Scan')
 					self.hpmsd.getAScan(self.parms, self.progress_update.emit)	
-					self.scan_done.emit(self.hpmsd.getSpec())
+					self.scan_done.emit([self.hpmsd.getSpec()])
 					self.scan_status.emit(True, 'Complete')
 
 				except hp5971.HP5971Exception as e1:
-						print ('5971 ' + str(e1))
+						self.logl('5971 ' + str(e1))
 						try:
 							 errstr = str(self.hpmsd.getErrors())
 						except Exception as e2:
@@ -249,15 +512,18 @@ class scanThread(QObject):
 						self.logl(traceback.format_exc())
 
 						self.scan_status.emit(False, str(e))
+		def doStop(self):
+			pass
 
 
 class tripleScanThread(QObject):
 		progress_update = pyqtSignal(int)
-		tscan_done = pyqtSignal(list)
+		scan_done = pyqtSignal(list)
 		scan_status = pyqtSignal(bool, str)
 		scan_info = pyqtSignal(str)
 		run_scan = pyqtSignal()
 		update_scan = pyqtSignal(hp5971.HP5971)
+		run_stop = pyqtSignal()
 
 		def __init__(self, hpmsd, parms, logl=print):
 				QObject.__init__(self)
@@ -298,12 +564,12 @@ class tripleScanThread(QObject):
 					self.hpmsd.getPartialScan(self.parms, self.progress_update.emit, moreScans=False)	
 					spec3 = self.hpmsd.getSpec()
 
-					self.tscan_done.emit([spec1, spec2, spec3])
+					self.scan_done.emit([spec1, spec2, spec3])
 					self.parms['Scan'].update(old_sparms)
 					self.scan_status.emit(True, 'Complete')
 
 				except hp5971.HP5971Exception as e1:
-						print ('5971 ' + str(e1))
+						self.logl ('5971 ' + str(e1))
 						try:
 							 errstr = str(self.hpmsd.getErrors())
 						except Exception as e2:
@@ -315,6 +581,9 @@ class tripleScanThread(QObject):
 						self.logl(traceback.format_exc())
 
 						self.scan_status.emit(False, str(e))
+
+		def doStop(self):
+			pass
 
 
 class runProgressThread(QObject):

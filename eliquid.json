@@ -820,7 +820,7 @@
                             "ftype": "d"
                         }
                     },
-                    "EntOfs": {
+                    "EntOffs": {
                         "Start": {
                             "type": "f",
                             "value": 0.0,

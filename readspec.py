@@ -5,12 +5,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas
 import scipy.signal
-
 #import crc16
 import sys
+import putil
 
 class ReadSpec():
-	
+	fig, ax = plt.subplots()
 	def __init__(self, data,ofs, logl=print):
 		self.logl = logl
 		self.b = data[ofs:]
@@ -223,34 +223,57 @@ class ReadSpec():
 		#print ('HHLen: ', self.hhlen, 'Flen: ', self.flen, 'Len: ', sbl, 'Last ', sb [-1:])
 		return sb
 
-	def plotit(self, n=0):
+	def plotit(self, name='', n=0):
 		i=self.spectrum[n]['ions']
 		DataType = self.spectrum[n]['DataType']
-		fig, ax = plt.subplots()
-
+		#fig, ax = plt.subplots()
+		ReadSpec.ax.clear()
 		if DataType == 1 or DataType == 3:
-			markerlines,stemlines, baselines  = ax.stem(i.get('m/z'),i.get('abundance'), linefmt='k-', markerfmt=' ')
+			markerlines,stemlines, baselines  = ReadSpec.ax.stem(i.get('m/z'),i.get('abundance'), linefmt='k-', markerfmt=' ')
 			plt.setp(stemlines, 'linewidth', 1.0)
 		else:
-			ax.plot(i.get('m/z'),i.get('abundance'), linewidth=0.75)
+			ReadSpec.ax.plot(i.get('m/z'),i.get('abundance'), linewidth=0.75)
 			
-		ax.set(xlabel='M/z', ylabel='abundance',
-	       	title='Ions')
-		ax.grid()
+		ReadSpec.ax.set(xlabel='M/z', ylabel='abundance',
+	       	title='Ions' + name)
+		ReadSpec.ax.grid()
 	
 		#fig.savefig("test.png")
-		plt.show()
+		plt.ion()
+		plt.draw()
+		plt.pause(1.0)
+		return ReadSpec.ax
 	
-	def plotramp(self):
+	def plotrampit(self, name='', currvolt=0.0):
 		i=self.ramp
-		fig, ax = plt.subplots()
+		ReadSpec.ax.clear()
 
-		ax.plot(i.get('voltage'),i.get('abundance'), linewidth=0.75)
+		ReadSpec.ax.plot(i.get('voltage'),i.get('abundance'), linewidth=0.75)
+		
+		ReadSpec.ax.set(xlabel='voltage', ylabel='abundance',
+	       	title='Ramp' + name)
+		#ax.axvline (x=i.get('abundance').max(), color='r')
+		maxtab, mintab = putil.PUtil.peaks(i, 'abundance','voltage')
+		if len(maxtab) > 0:
+			rampmaxima = pandas.DataFrame(np.array(maxtab), columns=['voltage', 'abundance'])
+			ReadSpec.ax.axvline(x=rampmaxima.iloc[rampmaxima['abundance'].idxmax()]['voltage'], color='r')
+		else:
+			voltofmax = i.iloc[i['abundance'].idxmax()]['voltage']
+			ReadSpec.ax.axvline(x=voltofmax, color='r')
+		ReadSpec.ax.axvline(x=currvolt, color='b')
+		ReadSpec.ax.grid()
+		plt.ion()
+		plt.draw()
+		plt.pause(1.0)
+
+		return ReadSpec.ax
+
+	def plotramp(self, fig, name=''):
+			i=self.ramp
+			fig.plot(i.get('voltage'),i.get('abundance'), linewidth=0.75)
 			
-		ax.set(xlabel='voltage', ylabel='abundance',
-	       	title='Ramp')
-		ax.grid()
-		plt.show()
+			fig.set(xlabel='voltage', ylabel='abundance',
+	       	title='Ramp' + name)
 
 	def plotint(fig, i, DataType):
 			#x, y = zip(*i)
@@ -466,8 +489,9 @@ if __name__ == "__main__":
 	#print(rs.b)
 	if rs.getSpectrum()['DataType'] == 3:
 		rs.rampBuild(0, 4.275)
-		print (rs.ramp)
-		rs.plotramp()
+		#print (rs.ramp)
+		ax = rs.plotrampit()
+		#plt.show()
 		#print(rs.explode())
 	else:
 		rs.plotit()

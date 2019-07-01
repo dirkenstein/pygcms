@@ -38,7 +38,7 @@ import scipy
 import scipy.interpolate
 
 from qdictparms import QParamArea, QStatusArea
-from specthreads import configThread, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
+from specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
 class AppForm(QMainWindow):
 		MaxRecentFiles = 5
@@ -52,6 +52,7 @@ class AppForm(QMainWindow):
 				
 				self.scanWindow = None
 				self.tuningWindow = None
+				self.tuning_mdi = None
 				self.scan_mdi = None
 				self.methodWindow = None
 				self.method_mdi = None
@@ -116,7 +117,7 @@ class AppForm(QMainWindow):
 						if self.methodWindow:
 							self.updMethodTabs()		
 						if self.scanWindow:
-							self.scanWindow.paramtabs.updatepboxes()
+							self.scanWindow.ms_status_area.updatepboxes()
 		def save_method(self):
 				file_choices = "JSON (*.json)|*.json"
 				
@@ -148,7 +149,7 @@ class AppForm(QMainWindow):
 			if self.methodWindow:
 				self.updMethodTabs()		
 			if self.scanWindow:
-				self.scanWindow.paramtabs.updatepboxes()
+				self.scanWindow.ms_status_area.updatepboxes()
 			self.setCurrentFile(path)
 			
 		def save_spectrum(self):
@@ -175,14 +176,17 @@ class AppForm(QMainWindow):
 						self.scanWindow.on_draw()
 		
 		def on_about(self):
-				msg = """ HP 5971 spectrum reader:
-				
-				 *Pretty much implements all the features 
-				 *In the Diagnostics/Vacuum Control->Edit MS Parm Screen
-				 *Obviously needs a 5971 connected
-				 *on a GPIB bus accessible to PyVISA
-				"""
-				QMessageBox.about(self, "About the demo", msg.strip())
+				msg = """ 
+ *          PySpec 0.1			
+ *HP 5890/ 5971 GC/MS control program:
+ *Pretty much implements all the features 
+ *In the Diagnostics/Vacuum Control Screen
+ *Obviously needs a 5971 connected
+ *on a GPIB bus accessible to PyVISA
+ *can also control a 5890 and 7673 autosampler
+ *  (C) 2019 Dirk Niggemann
+"""
+				QMessageBox.about(self, "About PySpec", msg.strip())
 	
 	
 		def loadparam(self):
@@ -203,7 +207,10 @@ class AppForm(QMainWindow):
 			else:
 				self.tuning_mdi.show()
 				self.tuningWindow.show()
-
+			if self.scan_mdi:
+				self.scan_mdi.close()
+			if self.inst_mdi:
+				self.inst_mdi.close()
 		def scan_window(self):
 			if not self.scanWindow:
 				AppForm.count = AppForm.count+1
@@ -218,12 +225,16 @@ class AppForm(QMainWindow):
 			else:
 				self.scan_mdi.show()
 				self.scanWindow.show()
+			if self.tuning_mdi:
+				self.tuning_mdi.close()
+			if self.inst_mdi:
+				self.inst_mdi.close()
 		def updMethodTabs(self):
 			for s in self.paramTabList:
 				s.updatepboxes()
 		def method_window(self):
 			if not self.method:
-				self.statusBar().showMessage('Error: No Method Loaded', 1000)
+				self.statusBar().showMessage('Error: No Method Loaded', 10000)
 			else:
 				path = self.methpath
 				meth = self.method['Method']
@@ -273,7 +284,7 @@ class AppForm(QMainWindow):
 	
 		def inst_window(self, q):
 			if not self.method:
-				self.statusBar().showMessage('Error: No Method Loaded', 1000)
+				self.statusBar().showMessage('Error: No Method Loaded', 10000)
 			else:
 				if not self.instWindow:
 					AppForm.count = AppForm.count+1
@@ -288,6 +299,10 @@ class AppForm(QMainWindow):
 				else:
 					self.inst_mdi.show()
 					self.instWindow.show()
+				if self.tuning_mdi:
+					self.tuning_mdi.close()
+				if self.scan_mdi:
+					self.scan_mdi.close()
 		def cascade_window(self, q):
 			self.mdi.cascadeSubWindows()
 
@@ -302,7 +317,7 @@ class AppForm(QMainWindow):
 				self.setCentralWidget(self.mdi)
 
 		def create_status_bar(self):
-				self.status_text = QLabel("This is a demo")
+				self.status_text = QLabel("PySpec 0.1")
 				self.progress = QProgressBar(self)
 				#self.progress.setGeometry(, 80, 250, 20)
 				self.statusBar().addWidget(self.status_text, 1)
@@ -460,14 +475,35 @@ class AppForm(QMainWindow):
 						action.setCheckable(True)
 				return action
 
+class Loggable:
+	def __init__(self):
+		self.logfile = open('MSD.LOG', "a+")
 
-class QTuneWindow(QWidget):
+	def logl(self,*args):
+			strl = [ str(x) for x in args] 
+			news = ''.join(strl)
+			try:
+				self.logfile.write(news+'\n')
+			except Exception as e:
+				print("Bad Log: ", news)
+			if	self.main.logText:
+				self.main.logline.emit(news)
+				#self.main.logText.moveCursor (QTextCursor.End);
+				#self.main.logText.moveCursor (QTextCursor.End);
+			#else:
+			#	print("Log: ", news)
+
+
+class QTuneWindow(QWidget, Loggable):
 		def __init__(self, parent = None, main=None, params=None):
-			super().__init__(parent)
-			self.msparms = params
+			super().__init__()
+			#self.msparms = params
+			self.closed = False
 			self.main = main
 			self.spectrum = [None, None, None]
+			self.ledbox = QLedPanel()
 
+			self.runner = threadRunner(self, main, None, params, None, None, tripleScanThread, self.showNewScan, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -510,14 +546,15 @@ class QTuneWindow(QWidget):
 			#self.connect(self.textbox, SIGNAL('editingFinished ()'), self.on_draw)
 			#self.textbox.editingFinished.connect(self.on_draw)
 			self.reinit_button = QPushButton("&Init")
-			self.reinit_button.clicked.connect(self.on_init)
+			self.reinit_button.clicked.connect(self.runner.on_init)
 			self.reinit_button.setEnabled(False)
 
 			#self.draw_button = QPushButton("&Draw")
 			#self.draw_button.clicked.connect(self.on_draw)
 			self.scan_button = QPushButton("&Scan")
-			self.scan_button.clicked.connect(self.on_scan)
+			self.scan_button.clicked.connect(self.runner.on_scan)
 
+			self.run_button = None
 
 			
 			#self.grid_cb = QCheckBox("Show &Grid")
@@ -544,7 +581,7 @@ class QTuneWindow(QWidget):
 					hbox.setAlignment(w, Qt.AlignVCenter)
 			
 			
-			#self.paramtabs = QParamArea(self, self.msparms)
+			self.ms_status_area = QParamArea(self, params)
 			
 			vbox1 = QVBoxLayout()
 			vbox1.addWidget(self.canvas1)
@@ -562,8 +599,10 @@ class QTuneWindow(QWidget):
 			hboxg.addLayout(vbox1)
 			hboxg.addLayout(vbox2)
 			hboxg.addLayout(vbox3)
-
+			
+		
 			vbox = QVBoxLayout()
+			vbox.addWidget(self.ledbox)
 			vbox.addLayout(hboxg)
 			vbox.addLayout(hbox)
 
@@ -573,22 +612,10 @@ class QTuneWindow(QWidget):
 			#bighbox.addWidget(self.paramtabs)
 			
 			self.setLayout(vbox)
-			self.init_thread = QThread()
-			self.progress_thread = QThread()
-
-			self.init_thread_o = initThread(None, self.logl, forRun=False)
 			self.scan_button.setEnabled(False)
-			self.scanning = False
-			self.init = False
 			self.anns = []
 			self.on_draw()
-			self.on_init()
-		
-		def logl(self,*args):
-			strl = [ str(x) for x in args] 
-			news = ''.join(strl)
-			if	self.main.logText:
-				self.main.logline.emit(news)
+			self.runner.on_init()
 			
 		def on_pick(self, event):
 				# The event received here is of the type
@@ -617,7 +644,7 @@ class QTuneWindow(QWidget):
 					self.vline.set_data([xe, xe], [0,1] )
 					self.canvas.draw()
 				
-		def showNewScans(self, rs):
+		def showNewScan(self, rs):
 				self.spectrum = rs
 				self.on_draw()
 				self.peak_detect()
@@ -685,93 +712,37 @@ class QTuneWindow(QWidget):
 						self.spectrum[x].plot(self.plts[x])
 					self.canvases[x].draw()
 					#self.vline = self.axes.axvline(x=0., color="k")
-				
-		def on_init(self):
-				self.init =False
-				self.reinit_button.setEnabled(False)
-				self.main.statusBar().showMessage('Initializing..', 1000)
-				QThread.yieldCurrentThread()
-				if not self.init_thread.isRunning():
-					self.init_thread_o.progress_update.connect(self.updateProgressBar)
-					self.init_thread_o.init_status.connect(self.setInitialized)
-					self.init_thread_o.moveToThread(self.init_thread)
-					self.init_thread_o.run_init.connect(self.init_thread_o.doInit)
-					self.init_thread.start()
-					self.init_thread_o.run_init.emit()
+		
+		def closeEvent(self, event):
+			# do stuff
+			self.runner.on_close()
+			can_exit = True
+			self.closed = True
 
-				else:
-					self.init_thread_o.init_msd = False
-					self.init_thread_o.init_gc = False
-					self.init_thread_o.init_inj = False
-					self.init_thread_o.init = False
-					self.init_thread_o.run_init.emit()
-				
-		def on_scan(self):
-				self.scanning =True
-				self.scan_button.setEnabled(False)
-				self.main.progress.setValue(0)
-				self.main.statusBar().showMessage('Scanning..', 2000)
+			if can_exit:
+				event.accept() # let the window close
+			else:
+				event.ignore()
+		
+		def showEvent(self, event):
+			print ("tuneWindow show")
+			if self.closed:
+				self.runner.on_init()
+				self.closed = False
 
-				if not self.progress_thread.isRunning():
-					self.progress_thread_o = tripleScanThread(self.hpmsd, self.msparms)
-					self.progress_thread_o.progress_update.connect(self.updateProgressBar)
-					self.progress_thread_o.tscan_done.connect(self.showNewScans)
-					self.progress_thread_o.scan_status.connect(self.showScanStatus)
-					self.progress_thread_o.scan_info.connect(self.showScanInfo)
-
-					self.progress_thread_o.moveToThread(self.progress_thread)
-					#self.progress_thread.started.connect(self.progress_thread_o.doScan)
-					self.progress_thread_o.run_scan.connect(self.progress_thread_o.doScan)
-					self.progress_thread.start()
-					self.progress_thread_o.run_scan.emit()
-				else:
-					self.progress_thread_o.run_scan.emit()
-					 
-		 
-		def setInitialized(self,ok, emsg):
-				if ok:
-					self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.main.progress.setValue(100)
-					self.scan_button.setEnabled(True)
-					self.reinit_button.setEnabled(True)
-					self.init = True
-					#self.doConfigThread()
-				else:
-					self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
-					self.main.progress.setValue(0)
-					
-		def showScanStatus(self,ok, emsg):
-				self.scan_button.setEnabled(True)
-				if ok:
-					self.main.statusBar().showMessage('Scan Done: ' + emsg, 2000)
-					self.main.progress.setValue(100)
-				else:
-					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
-					self.main.progress.setValue(0)
-				self.scanning = False
-				
-		def showScanInfo(self, emsg):
-					self.main.statusBar().showMessage('Scan Info: ' + emsg, 4000)
-	
-				
-		def updateProgressBar(self, maxVal):
-				uv = self.main.progress.value() + maxVal
-				if maxVal == 0:
-					 uv = 0
-				if uv > 100:
-					 uv = 100
-				self.main.progress.setValue(uv)
-
+			event.accept()
 						
-class QSpectrumScan(QWidget):
+class QSpectrumScan(QWidget, Loggable):
 		def __init__(self, parent = None, main=None, params=None):
-			super().__init__(parent)
-			self.msparms = params
+			super().__init__()
+			#self.msparms = params
 			#self.method = method
+			self.closed = False
+			self.ledbox = QLedPanel()
 			self.main = main
 			self.spectrum = None
 
+			self.runner = threadRunner(self, main, None, params, None, None, scanThread, self.showNewScan, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -806,14 +777,16 @@ class QSpectrumScan(QWidget):
 			#self.connect(self.textbox, SIGNAL('editingFinished ()'), self.on_draw)
 			#self.textbox.editingFinished.connect(self.on_draw)
 			self.reinit_button = QPushButton("&Init")
-			self.reinit_button.clicked.connect(self.on_init)
+			self.reinit_button.clicked.connect(self.runner.on_init)
 			self.reinit_button.setEnabled(False)
 
 			self.draw_button = QPushButton("&Draw")
 			self.draw_button.clicked.connect(self.on_draw)
 			self.scan_button = QPushButton("&Scan")
-			self.scan_button.clicked.connect(self.on_scan)
+			self.scan_button.clicked.connect(self.runner.on_scan)
 
+			self.run_button = None
+		
 
 			
 			self.grid_cb = QCheckBox("Show &Grid")
@@ -840,7 +813,7 @@ class QSpectrumScan(QWidget):
 					hbox.setAlignment(w, Qt.AlignVCenter)
 			
 			
-			self.paramtabs = QParamArea(self, self.msparms)
+			self.ms_status_area = QParamArea(self, params)
 			
 			dummy = QWidget()
 			dummy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
@@ -849,6 +822,7 @@ class QSpectrumScan(QWidget):
 			vbox2.addWidget(dummy)
 			
 			vbox = QVBoxLayout()
+
 			vbox.addWidget(self.mpl_toolbar)
 			vbox.addWidget(self.canvas)
 			vbox.addLayout(hbox)
@@ -856,25 +830,17 @@ class QSpectrumScan(QWidget):
 			
 			bighbox = QHBoxLayout()
 			bighbox.addLayout(vbox)
-			#bighbox.addLayout(phbox) 
-			bighbox.addWidget(self.paramtabs)
-			
-			self.setLayout(bighbox)
-			self.init_thread = QThread()
-			self.progress_thread = QThread()
+			#bighbox.addLayout(phbox)
+			vbox3 = QVBoxLayout()
+			vbox3.addWidget(self.ledbox)
+			vbox3.addWidget(self.ms_status_area)
+			bighbox.addLayout(vbox3)
 
-			self.init_thread_o = initThread(None, self.logl, forRun=False)
+			self.setLayout(bighbox)
 			self.scan_button.setEnabled(False)
-			self.scanning = False
-			self.init = False
 			self.on_draw()
-			self.on_init()
+			self.runner.on_init()
 		
-		def logl(self,*args):
-			strl = [ str(x) for x in args] 
-			news = ''.join(strl)
-			if	self.main.logText:
-				self.main.logline.emit(news)
 			
 		def on_pick(self, event):
 				# The event received here is of the type
@@ -924,129 +890,65 @@ class QSpectrumScan(QWidget):
 				self.plt.grid(self.grid_cb.isChecked())
 
 				if self.spectrum != None:
-					self.spectrum.plot(self.plt)
+					self.spectrum[0].plot(self.plt)
 				self.canvas.draw()
 				self.vline = self.plt.axvline(x=0., color="k")
-				
-		def on_init(self):
-				self.init =False
-				self.reinit_button.setEnabled(False)
-				self.main.statusBar().showMessage('Initializing..', 1000)
-				QThread.yieldCurrentThread()
-				if not self.init_thread.isRunning():
-					self.init_thread_o.progress_update.connect(self.updateProgressBar)
-					self.init_thread_o.init_status.connect(self.setInitialized)
-					self.init_thread_o.moveToThread(self.init_thread)
-					self.init_thread_o.run_init.connect(self.init_thread_o.doInit)
-					self.init_thread.start()
-					self.init_thread_o.run_init.emit()
+		
+		def closeEvent(self, event):
+			# do stuff
+			self.closed = True
+			self.runner.on_close()
+			can_exit = True
+			if can_exit:
+				event.accept() # let the window close
+			else:
+				event.ignore()
+		def showEvent(self, event):
+			print ("ScanWindow show")
+			if self.closed:
+				self.runner.on_init()
+				self.closed = False
+			event.accept()
 
-				else:
-					self.init_thread_o.init_msd = False
-					self.init_thread_o.init_gc = False
-					self.init_thread_o.init_inj = False
-					self.init_thread_o.init = False
-					self.init_thread_o.run_init.emit()
-				
-		def on_scan(self):
-				self.scanning =True
-				self.scan_button.setEnabled(False)
-				self.main.progress.setValue(0)
-				self.main.statusBar().showMessage('Scanning..', 2000)
-
-				if not self.progress_thread.isRunning():
-					self.progress_thread_o = scanThread(self.hpmsd, self.msparms)
-					self.progress_thread_o.progress_update.connect(self.updateProgressBar)
-					self.progress_thread_o.scan_done.connect(self.showNewScan)
-					self.progress_thread_o.scan_status.connect(self.showScanStatus)
-					self.progress_thread_o.moveToThread(self.progress_thread)
-					#self.progress_thread.started.connect(self.progress_thread_o.doScan)
-					self.progress_thread_o.run_scan.connect(self.progress_thread_o.doScan)
-					self.progress_thread.start()
-					self.progress_thread_o.run_scan.emit()
-				else:
-					self.progress_thread_o.run_scan.emit()
-				
-		def doGetConfig(self):
-				if (not self.scanning) and self.init:
-					self.main.progress.setValue(0)
-					self.scan_button.setEnabled(False)
-					self.reinit_button.setEnabled(False)
-					self.config_thread_o.run_config.emit()
-
-		def doConfigThread(self):
-				self.config_thread = QThread()
-				self.config_thread_o = configThread(self.hpmsd, self.logl)
-				self.config_thread_o.progress_update.connect(self.updateProgressBar)
-				self.config_thread_o.config_update.connect(self.onConfigUpdate)
-				self.config_thread_o.moveToThread(self.config_thread)
-				#self.config_thread.started.connect(self.config_thread.run)
-				self.config_thread_o.run_config.connect(self.config_thread_o.do_gc)
-
-				self.config_thread.start()
-				self.config_timer = QTimer()
-				self.config_timer.setSingleShot(False)        
-				self.config_timer.timeout.connect(self.doGetConfig)
-				self.config_timer.start(5000)
-				
-		def onConfigUpdate(self, conf):
-				self.scan_button.setEnabled(True)
-				self.reinit_button.setEnabled(True)
-
-				if not 'Error' in conf:
-					self.paramtabs.config_panel(conf)
-				else:
-					self.main.statusBar().showMessage('Config Error: ' + conf['Error'], 2000)
-					self.main.progress.setValue(0)
-					 
-		 
-		def setInitialized(self,ok, emsg):
-				if ok:
-					self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.main.progress.setValue(100)
-					self.scan_button.setEnabled(True)
-					self.reinit_button.setEnabled(True)
-					self.init = True
-					self.doConfigThread()
-				else:
-					self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
-					self.main.progress.setValue(0)
-					
-		def showScanStatus(self,ok, emsg):
-				self.scan_button.setEnabled(True)
-				if ok:
-					self.main.statusBar().showMessage('Scan Done: ' + emsg, 2000)
-					self.main.progress.setValue(100)
-				else:
-					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 2000)
-					self.main.progress.setValue(0)
-				self.scanning = False
-						
-		def updateProgressBar(self, maxVal):
-				uv = self.main.progress.value() + maxVal
-				if maxVal == 0:
-					 uv = 0
-				if uv > 100:
-					 uv = 100
-				self.main.progress.setValue(uv)
-					 
 			
 				
+class QLedPanel(QWidget):
+	def __init__(self, parent=None):
+			super().__init__(parent)
+			self.leds = []
+			self.leds.append(Led(self, on_color=Led.green, shape=Led.capsule))
+			self.leds.append(Led(self, on_color=Led.green, shape=Led.capsule))
+			self.leds.append(Led(self, on_color=Led.green, shape=Led.capsule))
 
-class QInstControl(QWidget):
+			grid = QGridLayout()
+			grid.addWidget(QLabel('HP5971'), 0, 1)
+			grid.addWidget(QLabel('HP5890'), 0, 2)
+			grid.addWidget(QLabel('HP7673'), 0, 3)
+
+			grid.addWidget(self.leds[0], 1, 1)
+			grid.addWidget(self.leds[1], 1, 2)
+			grid.addWidget(self.leds[2], 1, 3)
+			self.setLayout(grid)
+			
+	def turnOn(self, ledno):
+		self.leds[ledno].turn_on()
+		
+	def turnOn(self, ledno, status):
+		self.leds[ledno].turn_on(status)
+			
+	def turnOff(self, ledno):
+		self.leds[ledno].turn_off()
+
+class QInstControl(QWidget,Loggable):
 		def __init__(self, parent = None, main=None, method=None, methname =''):
 			super().__init__(parent)
 			self.method = method
 			self.methname = methname
 			self.fname = ''
-			
+			self.closed = False
 			self.main = main
+			self.runner = threadRunner(self, main, method, None, self.methname, self.fname, None, self.showNewScan, logl=self.logl, forRun=True)
 
-			self.msled = Led(self, on_color=Led.green, shape=Led.capsule)
-			self.gcled = Led(self, on_color=Led.green, shape=Led.capsule)
-			self.injled = Led(self, on_color=Led.green, shape=Led.capsule)
-			self.logfile = open('MSD.LOG', "a+")
 			vboxscan = QVBoxLayout()
 			
 			self.totI = []
@@ -1089,16 +991,10 @@ class QInstControl(QWidget):
 			dummy = QWidget()
 			dummy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
-			grid = QGridLayout()
-			grid.addWidget(QLabel('HP5971'), 0, 1)
-			grid.addWidget(QLabel('HP5890'), 0, 2)
-			grid.addWidget(QLabel('HP7673'), 0, 3)
-
-			grid.addWidget(self.msled, 1, 1)
-			grid.addWidget(self.gcled, 1, 2)
-			grid.addWidget(self.injled, 1, 3)
+			self.ledbox = QLedPanel()
 			
-			vbox.addLayout(grid)
+			vbox.addWidget(self.ledbox)
+			
 			vbox.addWidget(dummy)
 			hb2 = QHBoxLayout()
 			self.path_field = QLineEdit()
@@ -1112,17 +1008,18 @@ class QInstControl(QWidget):
 			vbox.addLayout(hb2)
 			
 			self.reinit_button =QPushButton('Reinit')
-			self.reinit_button.clicked.connect(self.on_init)
-
+			self.reinit_button.clicked.connect(self.runner.on_init)
 			vbox.addWidget(self.reinit_button)
+			
 			self.run_button = QPushButton('Run')
-			self.run_button.clicked.connect(self.on_run)
-
+			self.run_button.clicked.connect(self.runner.on_run)
 			vbox.addWidget(self.run_button)
+			
 			self.stop_button = QPushButton('Stop')
-			self.stop_button.clicked.connect(self.on_stop)
-
+			self.stop_button.clicked.connect(self.runner.on_stop)
 			vbox.addWidget(self.stop_button)
+			
+			self.scan_button = None
 			
 			#hbox.addLayout (vboxscan)
 
@@ -1156,207 +1053,26 @@ class QInstControl(QWidget):
 			
 			self.setLayout(hbox)
 			
-			self.progress_thread = QThread()
-			self.progress_thread_o = None
-			
-			self.init_thread = QThread()
-			self.init_thread_o = None
-			
-			self.status_thread = QThread()
-			self.status_thread_o = None
-			
-			self.on_init()
-			self.running = False
+			self.runner.on_init()
 			self.last_rt = 0.0
 			self.on_draw()
 			
 		def setPath(self):
 			self.fname = self.path_field.text()
+			self.runner.updateFname(self.fname)
 		
 		def fileDlg(self):
 			file_choices = "MS (*.MS)|*.ms"
 			path, choice = QFileDialog.getSaveFileName(self, 
 										'Set results file', '', 
 										file_choices)
-			self.fname = path
 			self.path_field.setText(path)
-			
-		def logl(self,*args):
-			strl = [ str(x) for x in args] 
-			news = ''.join(strl)
-			try:
-				self.logfile.write(news+'\n')
-			except Exception as e:
-				print("Bad Log: ", news)
-			if	self.main.logText:
-				self.main.logline.emit(news)
-				#self.main.logText.moveCursor (QTextCursor.End);
-				#self.main.logText.moveCursor (QTextCursor.End);
-			#else:
-			#	print("Log: ", news)
-
-		def on_init(self):
-				#self.logl("Reinit")
-				self.init =False
-				self.reinit_button.setEnabled(False)
-				self.run_button.setEnabled(False)
-				self.msled.turn_off()
-				self.gcled.turn_off()
-				self.injled.turn_off()
-				self.main.statusBar().showMessage('Initializing..', 1000)
-				QThread.yieldCurrentThread()
-				
-				if not self.init_thread.isRunning():
-					#self.logl("No init Thread")
-					self.init_thread_o = initThread(self.method, self.logl, forRun=True)
-					self.init_thread_o.progress_update.connect(self.updateProgressBar)
-					self.init_thread_o.inst_status.connect(self.instStatus)
-					self.init_thread_o.init_status.connect(self.setInitialized)
-					self.init_thread_o.inst_status.connect(self.instStatus)
-					self.init_thread_o.moveToThread(self.init_thread)
-					self.init_thread_o.run_init.connect(self.init_thread_o.doInit)
-					#self.init_thread.started.connect(self.init_thread_o.doInit)
-					self.init_thread.start()
-					self.init_thread_o.run_init.emit()
-				else:
-					#self.logl("Restart Init Thread")
-					self.init_thread_o.init_msd = False
-					self.init_thread_o.init_gc = False
-					self.init_thread_o.init_inj = False
-					self.init_thread_o.init = False
-					self.init_thread_o.run_init.emit()
-					
-		def on_run(self):
-			if len(self.fname) > 0:
-				self.running =True
-				self.run_button.setEnabled(False)
-				self.main.progress.setValue(0)
-				self.main.statusBar().showMessage('Run..', 2000)
-				if not self.progress_thread.isRunning():
-					
-					self.progress_thread_o = runProgressThread(self.fname, self.methname, self.hpmsd, self.hpgc, self.hpinj, self.method, self.logl)
-					self.progress_thread_o.progress_update.connect(self.updateProgressBar)
-					self.progress_thread_o.run_spec.connect(self.showNewScan)
-					self.progress_thread_o.run_done.connect(self.showRunStatus)
-					self.progress_thread_o.ms_status_update.connect(self.onStatusUpdate)
-					self.progress_thread_o.gc_status_update.connect(self.onStatusUpdateGc)
-					self.progress_thread_o.inj_status_update.connect(self.onStatusUpdateInj)
-
-					self.progress_thread_o.moveToThread(self.progress_thread)
-					#self.progress_thread.started.connect(self.progress_thread_o.doRun)
-					self.progress_thread_o.run_progress.connect(self.progress_thread_o.doRun)
-					self.progress_thread_o.run_stop.connect(self.progress_thread_o.endRun)
-					#self.run_stop.connect(self.endRun)
-
-					self.progress_thread.start()
-					self.progress_thread_o.run_progress.emit()
-
-				else:
-					self.progress_thread_o.run_progress.emit()
-					
-		def on_stop(self):
-			if self.progress_thread_o:
-				self.progress_thread_o.run_stop.emit()
+			self.setPath()
 
 			
-		def instStatus(self, hpms, hpgc, hpinj):
-			#print(hpms, hpgc, hpinj)
-			self.msled.turn_on(hpms)
-			self.gcled.turn_on(hpgc)
-			self.injled.turn_on(hpinj)
-
-		def setInitialized(self,ok, emsg):
-				if ok:
-					self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.hpgc = self.init_thread_o.getGc()
-					self.hpinj = self.init_thread_o.getInj()
-
-					self.main.progress.setValue(100)
-					self.run_button.setEnabled(True)
-					self.reinit_button.setEnabled(True)
-					self.init = True
-					self.doStatusThread()
-				else:
-					self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
-					self.main.progress.setValue(0)
-		
-		def updateProgressBar(self, maxVal):
-			uv = self.main.progress.value() + maxVal
-			if maxVal == 0:
-				 uv = 0
-			if uv > 100:
-				 uv = 100
-			self.main.progress.setValue(uv)
+	
 			
-		def doStatusThread(self):
-			if not self.status_thread.isRunning():
-				self.status_thread_o = statusThread(self.hpmsd, self.hpgc, self.logl)
-				self.status_thread_o.progress_update.connect(self.updateProgressBar)
-				self.status_thread_o.ms_status_update.connect(self.onStatusUpdate)
-				self.status_thread_o.gc_status_update.connect(self.onStatusUpdateGc)
 
-				self.status_thread_o.moveToThread(self.status_thread)
-				self.status_thread_o.run_status.connect(self.status_thread_o.do_st)
-				self.status_thread.start()
-			self.status_timer = QTimer()
-			self.status_timer.setSingleShot(False)        
-			self.status_timer.timeout.connect(self.doGetStatus)
-			self.status_timer.start(5000)
-			
-		
-		def doGetStatus(self):
-				if (not self.running) and self.init:
-					self.main.progress.setValue(0)
-					self.run_button.setEnabled(False)
-					self.reinit_button.setEnabled(False)
-					self.status_thread_o.run_status.emit(True)
-				
-		def onStatusUpdate(self, conf):
-				if not self.running:
-					self.run_button.setEnabled(True)
-					self.reinit_button.setEnabled(True)
-
-				if not 'Error' in conf:
-					self.ms_status_area.status_panel(conf)
-					#self.on_draw()
-
-				else:
-					self.main.statusBar().showMessage('Status  Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
-
-		def onStatusUpdateGc(self, conf):
-				if not self.running:
-					self.run_button.setEnabled(True)
-					self.reinit_button.setEnabled(True)
-
-				if not 'Error' in conf:
-					self.gc_status_area.status_panel(conf)
-					#self.on_draw()
-
-				else:
-					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
-
-		def onStatusUpdateInj(self, conf):
-				if not 'Error' in conf:
-					self.inj_status_area.status_panel(conf)
-					#self.on_draw()
-				else:
-					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
-
-		def showRunStatus(self,ok, emsg):
-				self.run_button.setEnabled(True)
-				if ok:
-					self.main.statusBar().showMessage('Run Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.hpgc = self.init_thread_o.getGc()
-					self.main.progress.setValue(100)
-				else:
-					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
-					self.main.progress.setValue(0)
-				self.running = False				
 		
 		def on_draw(self):
 			""" Redraws the figures
@@ -1386,8 +1102,24 @@ class QInstControl(QWidget):
 
 			#self.vline = self.axesi.axvline(x=0., color="k")
 			self.canvasi.draw()
+		
+		def closeEvent(self, event):
+			# do stuff
+			self.runner.on_close()
+			self.closed = True
+			can_exit = True
+			if can_exit:
+				event.accept() # let the window close
+			else:
+				event.ignore()
+		
+		def showEvent(self, event):
+			print ("InstWindow show")
+			if self.closed:
+				self.runner.on_init()
+				self.closed = False
+			event.accept()
 
-	
 		def showNewScan(self, rs):
 			self.spectrum = rs	
 			ti = self.spectrum.getTotIons()
@@ -1396,7 +1128,8 @@ class QInstControl(QWidget):
 			if rt - self.last_rt > 0.1:
 				self.on_draw()
 				self.last_rt = rt
-			
+		
+		
 def main():
 	app = QApplication(sys.argv)
 	form = AppForm()

@@ -5,10 +5,10 @@ import numpy as	np
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import peakdetect
 import peakutils
 import scipy
 import sys
+import putil
 
 class ReadMSFile():
 	hdr	=	">4p20p62p62p30p30p10p10p20pihhhhiiiihiiiii"
@@ -202,11 +202,11 @@ class ReadMSFile():
 			base['abundance'] = peakutils.baseline(i['abundance'], deg=6)
 			
 			#i['abundance'] = i['abundance'] - base['abundance']
-			maxtab, mintab = peakdetect.peakdet(i['abundance'],(i['abundance'].max() - i['abundance'].min())/100, i['retention_time'])
+			mat, mit = putil.PUtil.peaksfr(i, 'abundance', 'retention_time')
 			fig, ax	=	plt.subplots()
 			ax.plot(i.get('retention_time'),i.get('abundance'))
-			mat = pandas.DataFrame(np.array(maxtab), columns=['retention_time', 'abundance'])
-			mit = pandas.DataFrame(np.array(mintab), columns=['retention_time', 'abundance'])
+			#mat = pandas.DataFrame(np.array(maxtab), columns=['retention_time', 'abundance'])
+			#mit = pandas.DataFrame(np.array(mintab), columns=['retention_time', 'abundance'])
 			ax.scatter(mat['retention_time'], mat['abundance'], color='blue')
 			ax.scatter(mit['retention_time'], mit['abundance'], color='green')
 			#base = pandas.DataFrame((i['retention_time'], peakutils.baseline(i['abundance'],deg=6)) , columns=['retention_time', 'abundance'])
@@ -218,12 +218,12 @@ class ReadMSFile():
 			cls = ['yellow', 'cyan']
 			for m in mat['retention_time']:
 				
-				nearest = ReadMSFile.strad(mit, 'retention_time' ,m)
+				nearest = putil.PUtil.strad(mit, 'retention_time' ,m)
 				strt = nearest['retention_time'].min()
 				end = nearest['retention_time'].max()
 				#print (m, strt, end)
-				istrt = ReadMSFile.nearest(i, 'retention_time', strt).iloc[0].name
-				iend = ReadMSFile.nearest(i, 'retention_time', end).iloc[0].name
+				istrt =putil.PUtil.nearest(i, 'retention_time', strt).iloc[0].name
+				iend = putil.PUtil.nearest(i, 'retention_time', end).iloc[0].name
 				#print (istrt, iend)
 				#print(i['retention_time'][istrt:iend])
 				ax.fill_between(i['retention_time'][istrt:iend],i['abundance'][istrt:iend], color=cls[n%2])
@@ -298,28 +298,8 @@ class ReadMSFile():
 		plt.show()
 	def nearest_tic(self,value):
 		i=self.getTic()
-		return ReadMSFile.nearest(i, 'retention_time', value)
-	def nearest(fr, column, value):
-		return fr.iloc[(fr[column]-value).abs().argsort()[:2]]
-	def strad(fr, column, value):
-		vd = (fr[column]-value)
-		#print("vd\n", vd)
-		#vll =vd.where (vd < 0).dropna().abs().argsort()[:1]
-		#vuu = vd.where (vd < 0).dropna().abs().argsort()[:1]
-		vll = vd[vd < 0].abs().sort_values()[:1]
-		vuu = vd[vd >= 0].abs().sort_values()[:1]
-		#print(vll.name)
-		vl =fr.iloc[vll.index]
-		vu = fr.iloc[vuu.index]
-		#vl = vll
-		#vu = vuu
-		#if vl.iloc[0].name != vu.iloc[0].name:
-		#print ("vll\n", vll,"\n vuu\n", vuu)
-		#print ("val,vl,vu: ",value, "\n",  vl, vu)
-		nw = vl.append(vu)
-		#else:
-		#nw = vl
-		return nw
+		return putil.PUtil.nearest(i, 'retention_time', value)
+
 	def getSpectra(self):
 		if self.use_new:
 			return self.newspec
@@ -393,7 +373,7 @@ if __name__ == "__main__":
 	ax = f.plotit()
 	
 	nearest =f.nearest_tic(5.5)
-	print (nearest)
+	print (nearest, nearest.iloc[0]['abundance'])
 	print ((f.getTic()['abundance'].max() - f.getTic()['abundance'].min())/100)
 	plt.show()
 	f.consolidate()

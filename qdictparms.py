@@ -21,7 +21,7 @@ class QParamArea(QWidget):
 			self.heading = heading
 			if len(mtboxes) > 0:
 				self.cparambox = mtboxes[0]
-				print(self.cparambox)
+				#print(self.cparambox)
 				self.cparamgrid = QGridLayout()
 				self.cparambox.setLayout(self.cparamgrid)
 			else:
@@ -100,7 +100,7 @@ class QParamArea(QWidget):
 		def updatepboxes(self):
 			self.pboxupdate(self.paramboxes, self.params)
 		
-		def config_panel(self, conf):
+		def status_panel(self, conf):
 			self.cparambox.setTitle("Config")
 			n = 0 
 			deleteItems(self.cparamgrid)	
