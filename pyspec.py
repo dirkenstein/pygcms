@@ -31,7 +31,7 @@ from pyqt_led import Led
 import tune2meth
 import readspec
 
-import peakdetect
+import putil
 import numpy as np
 import pandas
 import scipy
@@ -503,22 +503,22 @@ class QTuneWindow(QWidget, Loggable):
 			self.spectrum = [None, None, None]
 			self.ledbox = QLedPanel()
 
-			self.runner = threadRunner(self, main, None, params, None, None, tripleScanThread, self.showNewScan, logl=self.logl, forRun=False)
+			self.runner = threadRunner(self, main, None, params, None, None, tripleScanThread, self.showNewScan, self.showNewTune, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
 			self.dpi = 100
-			self.fig1 = Figure((2.0, 9.0), dpi=self.dpi)
+			self.fig1 = Figure((2.0, 7.0), dpi=self.dpi)
 			self.canvas1 = FigureCanvas(self.fig1)
 			self.canvas1.setParent(self)
 			self.plt1 = self.fig1.add_subplot(111)
 
-			self.fig2 = Figure((2.0, 9.0), dpi=self.dpi)
+			self.fig2 = Figure((2.0, 7.0), dpi=self.dpi)
 			self.canvas2 = FigureCanvas(self.fig2)
 			self.canvas2.setParent(self)
 			self.plt2 = self.fig2.add_subplot(111)
 
-			self.fig3 = Figure((2.0, 9.0), dpi=self.dpi)
+			self.fig3 = Figure((2.0, 7.0), dpi=self.dpi)
 			self.canvas3 = FigureCanvas(self.fig3)
 			self.canvas3.setParent(self)
 			self.plt3 = self.fig3.add_subplot(111)
@@ -555,6 +555,8 @@ class QTuneWindow(QWidget, Loggable):
 			self.scan_button.clicked.connect(self.runner.on_scan)
 
 			self.run_button = None
+			self.tune_button = QPushButton("&Tune")
+			self.tune_button.clicked.connect(self.runner.on_tune)
 
 			
 			#self.grid_cb = QCheckBox("Show &Grid")
@@ -575,7 +577,7 @@ class QTuneWindow(QWidget, Loggable):
 			hbox = QHBoxLayout()
 			
 			#for w in [  self.textbox, self.draw_button, self.grid_cb]:
-			for w in [  self.reinit_button, self.scan_button]:
+			for w in [  self.reinit_button, self.scan_button, self.tune_button]:
 					#        slider_label, self.slider]:
 					hbox.addWidget(w)
 					hbox.setAlignment(w, Qt.AlignVCenter)
@@ -606,14 +608,15 @@ class QTuneWindow(QWidget, Loggable):
 			vbox.addLayout(hboxg)
 			vbox.addLayout(hbox)
 
-			#bighbox = QHBoxLayout()
-			#bighbox.addLayout(vbox)
+			bighbox = QHBoxLayout()
+			bighbox.addLayout(vbox)
 			#bighbox.addLayout(phbox) 
-			#bighbox.addWidget(self.paramtabs)
+			bighbox.addWidget(self.ms_status_area)
 			
-			self.setLayout(vbox)
+			self.setLayout(bighbox)
 			self.scan_button.setEnabled(False)
 			self.anns = []
+			self.init_peak_detect()
 			self.on_draw()
 			self.runner.on_init()
 			
@@ -646,22 +649,44 @@ class QTuneWindow(QWidget, Loggable):
 				
 		def showNewScan(self, rs):
 				self.spectrum = rs
+				self.ramps = [False, False, False]
 				self.on_draw()
-				self.peak_detect()
-				
-		def peak_detect(self):
-			self.maxima = [None, None, None]
-			self.minima = [None, None, None]
+				for n in range(3):
+					self.peak_detect(n)
+					self.draw_peak_detect(n, True)
+
+		def showNewTune(self, n, ramp, axis, rs):
+				self.spectrum[n] = rs[0]
+				if ramp:
+					self.ramps[n] = True
+					self.rparm[n] = rs[1]
+					self.ovolt[n] = rs[2]
+					self.pk[n] = rs[3]
+				else:
+					self.pk[n] = rs[1]
+				self.draw_int(n)
+				if not ramp and not axis:
+					self.peak_detect(n)
+					self.draw_peak_detect(n, True)
+				if ramp:
+					self.ramp_peak(n, self.ovolt[n])
+					
+		def init_peak_detect(self):
+			self.maxima = [pandas.DataFrame(), pandas.DataFrame(), pandas.DataFrame()]
+			self.minima = [pandas.DataFrame(), pandas.DataFrame(), pandas.DataFrame()]
 			self.spline = [None, None, None]
 			self.fwhm = [0.0, 0.0, 0.0]
 			self.maxab =  [0.0, 0.0, 0.0]
-			for x in range(3):
+			self.ramps = [False, False, False]
+			self.rparm = ["", "", ""]
+			self.ovolt = [0, 0, 0]
+			self.pk = [0,0,0]
+			
+		def peak_detect(self, x):
+			if self.spectrum[x] != None:
 				i = self.spectrum[x].getSpectrum()['ions']
 				self.maxab[x]=i['abundance'].max()
-				maxtab, mintab = peakdetect.peakdet(i['abundance'],(i['abundance'].max() - i['abundance'].min())/100, i['m/z'])
-				self.maxima[x] = pandas.DataFrame(np.array(maxtab), columns=['m/z', 'abundance'])
-				if len(mintab) > 0:
-					self.minima[x] = pandas.DataFrame(np.array(mintab), columns=['m/z', 'abundance'])
+				self.maxima[x], self.minima[x] = putil.PUtil.peaksfr(i, 'abundance', 'm/z')
 				#sels= []
 				#for idx, r in self.maxima.iterrows():
 					#sels.append((False, None, None))
@@ -670,15 +695,33 @@ class QTuneWindow(QWidget, Loggable):
 				self.spline[x] = scipy.interpolate.UnivariateSpline(i['m/z'],i['abundance'] - i['abundance'].max()/2,s=0)
 				self.fwhm[x] = abs(self.spline[x].roots()[1]-self.spline[x].roots()[0])
 				self.canvases[x].draw()
-			self.draw_peak_detect()
 
-		def draw_peak_detect(self):
-			for x in range(3):
-				self.plts[x].scatter(self.maxima[x]['m/z'] , self.maxima[x]['abundance'], color='blue', marker='v', picker=5)
+		def ramp_peak(self, x, currvolt):
+			if self.spectrum[x] != None:
+				i = self.spectrum[x].ramp
+				self.maxima[x], self.minima[x] = putil.PUtil.peaksfr(i, 'abundance','voltage')
+				if not self.maxima[x].empty:
+					self.plts[x].axvline(x=self.maxima[x].iloc[self.maxima[x]['abundance'].idxmax()]['voltage'], color='r')
+				else:
+					voltofmax = i.iloc[i['abundance'].idxmax()]['voltage']
+					self.plts[x].axvline(x=voltofmax, color='r')
+				self.plts[x].axvline(x=currvolt, color='b')
+				self.plts[x].grid()
+				self.canvases[x].draw()
+
+		def draw_peak_detect(self, x, one=False):
+			if not self.maxima[x].empty:
 				anns = []
-				for idx, r in self.maxima[x].iterrows():
+				maxid = self.maxima[x]['abundance'].idxmax
+				maxmz = self.maxima[x].iloc[maxid]['m/z']
+				maxab = self.maxima[x].iloc[maxid]['abundance']
+				if one:
+					self.plts[x].scatter(maxmz ,maxab, color='blue', marker='v', picker=5)
+				else:
+					self.plts[x].scatter(self.maxima[x]['m/z'] , self.maxima[x]['abundance'], color='blue', marker='v', picker=5)
+					for idx, r in self.maxima[x].iterrows():
 						anns.append(self.plts[x].annotate('%i:%.2f' % ( idx+1, r['m/z']), xy=(r['m/z'] + 0.05, r['abundance'] + self.maxab[x]*0.05)))
-				anns.append(self.plts[x].annotate("Ab %.0f Pw50 %.3f" % (self.maxima[x]['abundance'].max(), self.fwhm[x]) , xy=(0.5, 0.75), xycoords='axes fraction'))
+				anns.append(self.plts[x].annotate("Ab %.0f Pw50 %.3f" % (self.maxima[x].iloc[maxid]['abundance'], self.fwhm[x]) , xy=(0.5, 0.75), xycoords='axes fraction'))
 
 				for a in self.anns:
 					a.remove()
@@ -698,21 +741,24 @@ class QTuneWindow(QWidget, Loggable):
 
 				# clear the axes and redraw the plot anew
 				#
-				
-
 				for x in range(3):
-					self.plts[x].clear()        
-					readspec.ReadSpec.axes(self.plts[x])
-					self.plts[x].grid(True)
-					if self.spectrum[x] != None:
-						f = open('mass%i.bin' % x, "w+b")
-						f.write(self.spectrum[x].getData())
-						
-						#self.spectrum[x].smooth()	
-						self.spectrum[x].plot(self.plts[x])
-					self.canvases[x].draw()
+					self.draw_int(x)
+					
 					#self.vline = self.axes.axvline(x=0., color="k")
-		
+		def draw_int(self, x):
+			self.plts[x].clear()        
+			readspec.ReadSpec.axes(self.plts[x],  ' ' + str(self.pk[x]))
+			self.plts[x].grid(True)
+			if self.spectrum[x] != None:
+				f = open('mass%i.bin' % x, "w+b")
+				f.write(self.spectrum[x].getData())
+				#self.spectrum[x].smooth()	
+				if self.ramps[x]:
+					self.spectrum[x].plotramp(self.plts[x], ' ' + self.rparm[x] + ' ' + str(self.pk[x]))
+				else:
+					self.spectrum[x].plot(self.plts[x])
+			self.canvases[x].draw()
+
 		def closeEvent(self, event):
 			# do stuff
 			self.runner.on_close()
@@ -741,8 +787,8 @@ class QSpectrumScan(QWidget, Loggable):
 			self.ledbox = QLedPanel()
 			self.main = main
 			self.spectrum = None
-
-			self.runner = threadRunner(self, main, None, params, None, None, scanThread, self.showNewScan, logl=self.logl, forRun=False)
+		
+			self.runner = threadRunner(self, main, None, params, None, None, scanThread, self.showNewScan, None, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -786,7 +832,8 @@ class QSpectrumScan(QWidget, Loggable):
 			self.scan_button.clicked.connect(self.runner.on_scan)
 
 			self.run_button = None
-		
+			self.tune_button = None
+
 
 			
 			self.grid_cb = QCheckBox("Show &Grid")
@@ -947,7 +994,7 @@ class QInstControl(QWidget,Loggable):
 			self.fname = ''
 			self.closed = False
 			self.main = main
-			self.runner = threadRunner(self, main, method, None, self.methname, self.fname, None, self.showNewScan, logl=self.logl, forRun=True)
+			self.runner = threadRunner(self, main, method, None, self.methname, self.fname, None, self.showNewScan, None, logl=self.logl, forRun=True)
 
 			vboxscan = QVBoxLayout()
 			
@@ -1020,7 +1067,8 @@ class QInstControl(QWidget,Loggable):
 			vbox.addWidget(self.stop_button)
 			
 			self.scan_button = None
-			
+			self.tune_button = None
+
 			#hbox.addLayout (vboxscan)
 
 			vbox2 = QVBoxLayout()

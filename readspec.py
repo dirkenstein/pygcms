@@ -253,9 +253,8 @@ class ReadSpec():
 		ReadSpec.ax.set(xlabel='voltage', ylabel='abundance',
 	       	title='Ramp' + name)
 		#ax.axvline (x=i.get('abundance').max(), color='r')
-		maxtab, mintab = putil.PUtil.peaks(i, 'abundance','voltage')
-		if len(maxtab) > 0:
-			rampmaxima = pandas.DataFrame(np.array(maxtab), columns=['voltage', 'abundance'])
+		rampmaxima, rampminima = putil.PUtil.peaksfr(i, 'abundance','voltage')
+		if not rampmaxima.empty:
 			ReadSpec.ax.axvline(x=rampmaxima.iloc[rampmaxima['abundance'].idxmax()]['voltage'], color='r')
 		else:
 			voltofmax = i.iloc[i['abundance'].idxmax()]['voltage']
@@ -313,9 +312,9 @@ class ReadSpec():
 		i=self.spectrum[n]['ions']
 		return i['m/z'].min()
 	
-	def axes(fig):
+	def axes(fig, name=''):
 		fig.set(xlabel='M/z', ylabel='Abundance',
-	       	title='Ions')
+	       	title='Ions' + name)
 		fig.grid()
 		
 	def getSpectrum(self,n=0):

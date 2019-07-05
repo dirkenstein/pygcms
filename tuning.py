@@ -7,7 +7,7 @@ import math
 import putil 
 
 class HP5971Tuning():
-	def __init__(self,msd, parms, logl=print):
+	def __init__(self, msd, parms, emitScan, emitAxis, emitRamp, logl=print):
 		self.hpmsd = msd
 		self.parms = copy.deepcopy(parms)
 		self.logl = logl
@@ -22,7 +22,10 @@ class HP5971Tuning():
 			self.hpmsd.adjScanParms(self.mass[x],self.tunepk[x])
 		wrd = self.hpmsd.getRevisionWord()
 		self.logampf = hp5971.HP5971.getLogAmpScale(wrd)
-	
+		self.emitScan = emitScan
+		self.emitRamp = emitRamp
+		self.emitAxis = emitAxis
+
 	def getParms(self):
 		self.parms.update({'Mass': self.defaultMassParms})
 		self.parms.update({'Tuning': self.defaultTuningParms})
@@ -33,7 +36,7 @@ class HP5971Tuning():
 		 self.hpmsd.dataMode(1)
 		 self.hpmsd.readData()
 		 self.abPw50()
-		 self.emitScan(n)
+		 self.emitScan(self.hpmsd.getSpecs()[0], n, self.tunepk[n])
 		 
 	def stdSetupAb(self):
 		self.hpmsd.filtSetupStd()
@@ -130,7 +133,7 @@ class HP5971Tuning():
 		self.maxabs[2] = self.maxab
 		self.logl("mass3 ab ",self.maxabs[2] )
 
-		print ("initial ratio 1:" , self.maxabs[1]/self.maxabs[0], ":", self.maxabs[2]/self.maxabs[0])  
+		self.logl ("initial ratio 1:" , self.maxabs[1]/self.maxabs[0], ":", self.maxabs[2]/self.maxabs[0])  
 
 		step = 1
 		emv = 0
@@ -164,7 +167,7 @@ class HP5971Tuning():
 				self.maxabs[2] = self.maxab
 				self.logl("mass3 ab ", self.maxabs[2])
 		
-		print ("final emv adj ", emv, " ratio 1:" , self.maxabs[1]/self.maxabs[0], ":", self.maxabs[2]/self.maxabs[0])  
+		self.logl ("final emv adj ", emv, " ratio 1:" , self.maxabs[1]/self.maxabs[0], ":", self.maxabs[2]/self.maxabs[0])  
 		newemv = emv
 		self.defaultTuningParms = self.rampEmv(self.defaultTuningParms, newemv)
 	
@@ -196,8 +199,8 @@ class HP5971Tuning():
 		pwo = self.pws[0] - ideal 
 		pwos = self.pws[secondpeak] - ideal
 		pwors = self.pws[secondpeak]/ideal
-		print ("pw ratio 1: ", pwr)
-		print ("ideal diff: 1: ", pwo , "3: " , pwos)
+		self.logl ("pw ratio 1: ", pwr)
+		self.logl ("ideal diff: 1: ", pwo , "3: " , pwos)
 		#ganr = (1.0/pwr + 1.0/pwor2)/2
 		#gano = -(pwo + pwos)/2
 		limit = 0.075
@@ -307,7 +310,7 @@ class HP5971Tuning():
 		self.hpmsd.dataMode(1)
 		self.hpmsd.readData()
 		self.mzaxis()
-		self.emitScan(n)
+		self.emitAxis(self.hpmsd.getSpecs()[0], n, self.tunepk[n])
 	def stdSetupMx(self):
 		self.fault = self.hpmsd.getFaultStat()
 		self.hpmsd.rvrOn()
@@ -399,7 +402,7 @@ class HP5971Tuning():
 		ab1o = self.avgab
 
 		self.hpmsd.massRange(self.mass[2], 0)
-		self.scanRepMx(1)
+		self.scanRepMx(2)
 		mz3 = self.avgmz
 		ab3 = self.avgab
 
@@ -495,7 +498,7 @@ class HP5971Tuning():
 		self.hpmsd.getSpecs()[0].rampBuild( self.start(self.defaultTuningParms, parm), self.step(self.defaultTuningParms, parm))
 		self.rampMax()
 		ovolt = self.ov(self.defaultTuningParms , parm)
-		self.emitRamp(n, parm, ovolt)
+		self.emitRamp(self.hpmsd.getSpecs()[0], n,  self.tunepk[n], parm, ovolt)
 		
 	def rampIt(self, mass, nam, parm, dwell=35):
 		self.rampInit()
@@ -536,10 +539,6 @@ class HP5971Tuning():
 		self.readRampRecs(parm, 2)
 		self.rampv[2] = self.chosenvoltage
 		newv = math.fsum(self.rampv)/len(self.rampv)
-		print ("New voltage: ", newv)
+		self.logl ("New voltage: ", newv)
 		self.defaultTuningParms = self.nv (self.defaultTuningParms, parm, newv)
-		
-	def emitScan(self, n):
-		self.hpmsd.getSpecs()[0].plotit(name = ' ' + str(self.tunepk[n]))
-	def emitRamp(self, n, parm, ovolt):
-		self.hpmsd.getSpecs()[0].plotrampit(' ' +parm + ' ' + str(self.tunepk[n]), currvolt=ovolt)
+	

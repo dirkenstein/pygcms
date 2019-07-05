@@ -11,10 +11,12 @@ import copy
 import time
 import datetime
 import traceback
+import tuning
+import json
 import msfileread as msfr
 
 class threadRunner():
-		def __init__(self,  parent, main, method, msparms, methname, fname, scan_thread, showNewScan, logl=print, forRun=False):
+		def __init__(self,  parent, main, method, msparms, methname, fname, scan_thread, showNewScan, showTuning, logl=print, forRun=False):
 			self.progress_thread = QThread()
 			self.progress_thread_o = None
 			
@@ -23,10 +25,16 @@ class threadRunner():
 			
 			self.status_thread = QThread()
 			self.status_thread_o = None
+	
+			self.tune_thread = QThread()
+			self.tune_thread_o = None
+			
+			
 			self.status_timer = None
 			self.init = False
 			self.scanning = False
 			self.running = False
+			self.tuning = False
 			self.parent = parent
 			self.main = main
 			self.method = method
@@ -34,22 +42,64 @@ class threadRunner():
 			self.logl = logl
 			self.scan_thread = scan_thread
 			self.showNewScan = showNewScan
+			self.showTuning = showTuning
 			self.forRun = forRun 
 			self.fname = fname
 			self.methname = methname
-			
+		
+		def disableAllButtons(self):
+			if self.parent.reinit_button:
+				self.parent.reinit_button.setEnabled(False)
+			if self.parent.run_button:
+				self.parent.run_button.setEnabled(False)
+			if self.parent.scan_button:
+				self.parent.scan_button.setEnabled(False)
+			if self.parent.tune_button:
+				self.parent.tune_button.setEnabled(False)
+
+		def disableStartButtons(self):
+			if self.parent.run_button:
+				self.parent.run_button.setEnabled(False)
+			if self.parent.scan_button:
+				self.parent.scan_button.setEnabled(False)
+			if self.parent.tune_button:
+				self.parent.tune_button.setEnabled(False)
+				
+		def enableAllButtons(self):
+			if self.parent.run_button:
+				self.parent.run_button.setEnabled(True)
+			if self.parent.scan_button:
+				self.parent.scan_button.setEnabled(True)
+			if self.parent.reinit_button:
+				self.parent.reinit_button.setEnabled(True)
+			if self.parent.tune_button:
+				self.parent.tune_button.setEnabled(True)
+
+		def enableStartButtons(self):
+			if self.parent.run_button:
+				self.parent.run_button.setEnabled(True)
+			if self.parent.scan_button:
+				self.parent.scan_button.setEnabled(True)
+			if self.parent.tune_button:
+				self.parent.tune_button.setEnabled(True)
+
+		def disableIndicators(self):
+			if self.parent.ledbox:
+				self.parent.ledbox.turnOff(0)
+				self.parent.ledbox.turnOff(1)
+				self.parent.ledbox.turnOff(2)
+		
+		def indicators(self, hpms, hpgc,hpinj):
+			if self.parent.ledbox:
+				self.parent.ledbox.turnOn(0, hpms)
+				self.parent.ledbox.turnOn(1, hpgc)
+				self.parent.ledbox.turnOn(2, hpinj)
+		
 		def on_init(self):
 				#self.logl("Reinit")
 				self.init =False
-				self.parent.reinit_button.setEnabled(False)
-				if self.parent.run_button:
-					self.parent.run_button.setEnabled(False)
-				if self.parent.scan_button:
-					self.parent.scan_button.setEnabled(False)
-				if self.parent.ledbox:
-					self.parent.ledbox.turnOff(0)
-					self.parent.ledbox.turnOff(1)
-					self.parent.ledbox.turnOff(2)
+				self.disableAllButtons()
+				self.disableIndicators()
 				self.main.statusBar().showMessage('Initializing..', 1000)
 				QThread.yieldCurrentThread()
 				
@@ -76,9 +126,7 @@ class threadRunner():
 		
 		def on_scan(self):
 				self.scanning =True
-				self.parent.scan_button.setEnabled(False)
-				if self.parent.run_button:
-					self.parent.run_button.setEnabled(False)
+				self.disableStartButtons()
 				self.main.progress.setValue(0)
 				self.main.statusBar().showMessage('Scanning..', 2000)
 
@@ -101,10 +149,7 @@ class threadRunner():
 		def on_run(self):
 			if len(self.fname) > 0:
 				self.running =True
-				if self.parent.run_button:
-					self.parent.run_button.setEnabled(False)
-				if self.parent.scan_button:
-					self.parent.scan_button.setEnabled(False)
+				self.disableStartButtons()
 				self.main.progress.setValue(0)
 				self.main.statusBar().showMessage('Run..', 2000)
 				if not self.progress_thread.isRunning():
@@ -145,23 +190,17 @@ class threadRunner():
 			self.main.progress.setValue(uv)
 		
 		def showScanStatus(self,ok, emsg):
-			if self.parent.scan_button:
-				self.parent.scan_button.setEnabled(True)
-				if ok:
-					self.main.statusBar().showMessage('Scan Done: ' + emsg, 2000)
-					self.main.progress.setValue(100)
-				else:
-					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
-					self.main.progress.setValue(0)
-				self.scanning = False
-		
+			if ok:
+				self.main.statusBar().showMessage('Scan Done: ' + emsg, 2000)
+				self.main.progress.setValue(100)
+			else:
+				self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
+				self.main.progress.setValue(0)
+			self.scanning = False
+	
 		def instStatus(self, hpms, hpgc, hpinj):
 			#print(hpms, hpgc, hpinj)
-			if self.parent.ledbox:
-				self.parent.ledbox.turnOn(0, hpms)
-				self.parent.ledbox.turnOn(1, hpgc)
-				self.parent.ledbox.turnOn(2, hpinj)
-		
+			self.indicators(hpms, hpgc,hpinj)
 		def showScanInfo(self, emsg):
 			self.main.statusBar().showMessage('Scan Info: ' + emsg, 4000)
 		
@@ -185,91 +224,111 @@ class threadRunner():
 
 		
 		def setInitialized(self,ok, emsg):
-				if ok:
-					self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.hpgc = self.init_thread_o.getGc()
-					self.hpinj = self.init_thread_o.getInj()
+			if ok:
+				self.main.statusBar().showMessage('Init Done: ' + emsg, 2000)
+				self.hpmsd = self.init_thread_o.getMsd()
+				self.hpgc = self.init_thread_o.getGc()
+				self.hpinj = self.init_thread_o.getInj()
 
-					self.main.progress.setValue(100)
-					if self.parent.run_button:
-						self.parent.run_button.setEnabled(True)
-					if self.parent.scan_button:
-						self.parent.scan_button.setEnabled(True)
-					self.parent.reinit_button.setEnabled(True)
-					self.init = True
-					self.doStatusThread()
-				else:
-					self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
-					self.main.progress.setValue(0)
-					
+				self.main.progress.setValue(100)
+				self.enableAllButtons()
+				self.init = True
+				self.doStatusThread()
+			else:
+				self.main.statusBar().showMessage('Init Failed: ' + emsg, 2000)
+				self.main.progress.setValue(0)
+				
 		def doGetStatus(self):
-				if (not self.running) and (not self.scanning) and self.init:
-					self.main.progress.setValue(0)
-					if self.parent.run_button:
-						self.parent.run_button.setEnabled(False)
-					self.parent.reinit_button.setEnabled(False)
-					if self.parent.scan_button:
-						self.parent.scan_button.setEnabled(False)
-					self.status_thread_o.run_status.emit(True)
-	
+			if (not self.running) and (not self.scanning) and (not self.tuning) and self.init:
+				self.main.progress.setValue(0)
+				self.disableStartButtons()
+				self.status_thread_o.run_status.emit(True)
+
 		def onStatusUpdate(self, conf):
-				if not self.running and not self.scanning:
-					if self.parent.run_button:
-						self.parent.run_button.setEnabled(True)
-					if self.parent.scan_button:
-						self.parent.scan_button.setEnabled(True)
+			if not self.running and not self.scanning:
+				self.enableAllButtons()
 
-					self.parent.reinit_button.setEnabled(True)
+			if not 'Error' in conf:
+				self.parent.ms_status_area.status_panel(conf)
+				#self.parent.paramtabs.status_panel(conf)
+				#self.on_draw()
 
-				if not 'Error' in conf:
-					self.parent.ms_status_area.status_panel(conf)
-					#self.parent.paramtabs.status_panel(conf)
-					#self.on_draw()
-
-				else:
-					self.main.statusBar().showMessage('Status  Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
+			else:
+				self.main.statusBar().showMessage('Status  Error: ' + conf['Error'], 10000)
+				self.main.progress.setValue(0)
 
 		def onStatusUpdateGc(self, conf):
-				if not self.running:
-					if self.parent.run_button:
-						self.parent.run_button.setEnabled(True)
-					self.parent.reinit_button.setEnabled(True)
-					if self.parent.scan_button:
-						self.parent.scan_button.setEnabled(True)
+			if not self.running:
+				self.enableAllButtons()
 
-				if not 'Error' in conf:
-					self.parent.gc_status_area.status_panel(conf)
-					#self.on_draw()
+			if not 'Error' in conf:
+				self.parent.gc_status_area.status_panel(conf)
+				#self.on_draw()
 
-				else:
-					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
+			else:
+				self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
+				self.main.progress.setValue(0)
 
 		def onStatusUpdateInj(self, conf):
-				if not 'Error' in conf:
-					self.parent.inj_status_area.status_panel(conf)
-					#self.on_draw()
-				else:
-					self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
-					self.main.progress.setValue(0)
+			if not 'Error' in conf:
+				self.parent.inj_status_area.status_panel(conf)
+				#self.on_draw()
+			else:
+				self.main.statusBar().showMessage('Status Error: ' + conf['Error'], 10000)
+				self.main.progress.setValue(0)
+#				self.hpmsd = self.init_thread_o.getMsd()
+#				self.hpgc = self.init_thread_o.getGc()
 
 		def showRunStatus(self,ok, emsg):
-			if self.parent.run_button:
-				self.parent.run_button.setEnabled(True)
-			if self.parent.scan_button:
-				self.scan_button.setEnabled(True)
+			self.enableStartButtons()
+			if ok:
+				self.main.statusBar().showMessage('Run Done: ' + emsg, 2000)
+				self.main.progress.setValue(100)
+			else:
+				self.main.statusBar().showMessage('Run Failed: ' + emsg, 10000)
+				self.main.progress.setValue(0)
+			self.running = False
 
-				if ok:
-					self.main.statusBar().showMessage('Run Done: ' + emsg, 2000)
-					self.hpmsd = self.init_thread_o.getMsd()
-					self.hpgc = self.init_thread_o.getGc()
-					self.main.progress.setValue(100)
-				else:
-					self.main.statusBar().showMessage('Scan Failed: ' + emsg, 10000)
-					self.main.progress.setValue(0)
-				self.running = False						 
+		def on_tune(self):
+			self.tuning =True
+			self.disableStartButtons()
+			self.main.progress.setValue(0)
+			self.main.statusBar().showMessage('Tune..', 2000)
+			if not self.tune_thread.isRunning():
+				self.tune_thread_o = tuningThread( self.hpmsd, self.msparms, self.logl)
+				self.tune_thread_o.progress_update.connect(self.updateProgressBar)
+				self.tune_thread_o.tune_spec.connect(self.showTuning)
+				self.tune_thread_o.tune_done.connect(self.showTuneStatus)
+				self.tune_thread_o.tune_info.connect(self.showTuneInfo)
+
+				self.tune_thread_o.moveToThread(self.tune_thread)
+				self.tune_thread_o.run_tune.connect(self.tune_thread_o.doTune)
+				self.tune_thread_o.run_stop.connect(self.tune_thread_o.doStop)
+				#self.run_stop.connect(self.endRun)
+
+				self.tune_thread.start()
+				self.tune_thread_o.run_tune.emit()
+
+			else:
+				self.tune_thread_o.run_tune.emit()
+
+		def showTuneStatus(self,ok, emsg, parms):
+			self.enableStartButtons()
+			if ok:
+				self.main.statusBar().showMessage('Tune Done: ' + emsg, 2000)
+				self.main.progress.setValue(100)
+				self.msparms = parms
+				self.main.msparms = parms
+			else:
+				self.main.statusBar().showMessage('Tune Failed: ' + emsg, 10000)
+				self.main.progress.setValue(0)
+			self.tuning = False
+
+		def showTuneInfo(self, emsg):
+			self.main.statusBar().showMessage('Tune Info: ' + emsg, 4000)
+
+
+
 		def updateFname(self,fname):
 			self.fname = fname
 		def updateMethod(self, method):
@@ -278,6 +337,8 @@ class threadRunner():
 			self.msparms = msparms
 		def updateParent(self , parent):
 			self.parent = parent
+		def getMsParms():
+			return self.msparms
 		def on_close(self):
 			self.logl("closing threads")
 			if self.status_timer:
@@ -522,7 +583,6 @@ class tripleScanThread(QObject):
 		scan_status = pyqtSignal(bool, str)
 		scan_info = pyqtSignal(str)
 		run_scan = pyqtSignal()
-		update_scan = pyqtSignal(hp5971.HP5971)
 		run_stop = pyqtSignal()
 
 		def __init__(self, hpmsd, parms, logl=print):
@@ -585,6 +645,97 @@ class tripleScanThread(QObject):
 		def doStop(self):
 			pass
 
+class tuningThread(QObject):
+		progress_update = pyqtSignal(int)
+		tune_spec = pyqtSignal(int, bool, bool, list)
+		tune_done = pyqtSignal(bool, str, dict)
+		tune_info = pyqtSignal(str)
+		run_tune = pyqtSignal()
+		run_stop = pyqtSignal()
+		
+		
+		def __init__(self, hpmsd, parms, logl=print):
+				QObject.__init__(self)
+				self.hpmsd = hpmsd
+				self.parms = parms
+				self.logl = logl
+				#self.run_scan.connect(self.doScan)
+				self.tun = tuning.HP5971Tuning(self.hpmsd, self.parms, self.emitScan, self.emitAxis, self.emitRamp, logl=self.logl)
+
+		def updateDevices(self, hpmsd):
+				self.hpmsd = hpmsd
+			
+				
+		def __del__(self):
+				pass
+				#self.wait()
+
+
+		def doTune(self):
+				try:
+					self.logl(self.hpmsd.getAvc())
+					self.logl(self.hpmsd.getCivc())
+					wrd = self.hpmsd.getRevisionWord()
+					self.logl (hp5971.HP5971.getLogAmpScale(wrd))
+					self.logl(self.hpmsd.diagIO())
+					self.hpmsd.calValve(1)
+					self.hpmsd.readyOn()
+					self.tune_info.emit('Waiting for PFTBA to stabilise')
+
+					time.sleep(30)
+					self.tune_info.emit('Abundance')
+
+					self.tun.abundance(1e6, 3e6)
+					self.tune_info.emit('Width')
+
+					self.tun.width(2)
+					self.tune_info.emit('Abundance')
+					self.tun.abundance(1e6, 3e6)
+					self.tune_info.emit('Mass Axis')
+
+					self.tun.axis(1)
+					self.tune_info.emit('Ramp')
+
+					self.tun.rampEnt()
+					self.tun.rampEntOfs()
+					self.tun.rampXray()
+					self.tun.rampRep()
+					self.tun.rampIon()
+
+					parms = self.tun.getParms()
+					f = open("tunnew.json", "w")
+					f.write(json.dumps(parms, indent=4))
+					f.close()
+					self.tune_done.emit(True, "Tune Done", parms)
+
+
+				except hp5971.HP5971Exception as e1:
+						self.logl ('5971 ' + str(e1))
+						try:
+							 errstr = str(self.hpmsd.getErrors())
+						except Exception as e2:
+							 errstr = str(e)
+						finally:
+							 self.tune_done.emit(False, errstr, {})
+				except Exception as e:
+						self.logl ('Exc ' + str(e))
+						self.logl(traceback.format_exc())
+
+						self.tune_done.emit(False, str(e), {})
+
+		def doStop(self):
+			pass
+		
+		def emitScan(self, spec, n, pk):
+			self.tune_spec.emit(n, False,False, [spec, pk])
+		
+		def emitAxis(self, spec, n, pk):
+			self.tune_spec.emit(n, False,True, [spec, pk])
+			
+			#spec.plotit(name = ' ' + str(self.tunepk[n]))
+		def emitRamp(self, spec, n, pk, parm, ovolt):
+			self.tune_spec.emit(n, True, False, [spec, parm, ovolt, pk])
+			#spec.plotrampit(' ' +parm + ' ' + str(self.tunepk[n]), currvolt=ovolt)
 
 class runProgressThread(QObject):
 		progress_update = pyqtSignal(int)

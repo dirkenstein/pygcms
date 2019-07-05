@@ -25,6 +25,11 @@ def test5971_alone():
 		m.getAScan(parms)
 		m.rs.plotit()
 
+	
+def emitScan( spec, n,pk):
+	spec.plotit(name = ' ' + str(pk))
+def emitRamp(spec, n, pk, parm, ovolt):
+	spec.plotrampit(' ' +parm + ' ' + str(pk), currvolt=ovolt)
 
 def main():
 	method = sys.argv[1]
@@ -54,7 +59,7 @@ def main():
 	ms.calValve(1)
 	ms.readyOn()
 	time.sleep(30)
-	tun = tuning.HP5971Tuning(ms, parms)
+	tun = tuning.HP5971Tuning(ms, parms, emitScan, emitRamp)
 	tun.abundance(1e6, 3e6)
 	tun.width(2)
 	tun.abundance(1e6, 3e6)
