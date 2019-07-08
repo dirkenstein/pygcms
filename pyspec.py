@@ -38,6 +38,7 @@ import scipy
 import scipy.interpolate
 
 from qdictparms import QParamArea, QStatusArea
+from qdictionarytree import DictionaryTreeWidget
 from specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
 class AppForm(QMainWindow):
@@ -62,6 +63,8 @@ class AppForm(QMainWindow):
 				self.log_mdi = None			
 				self.logText= None	
 				self.method = None
+				self.tuning_modified = False
+				self.method_modified = False
 				self.loadparam()
 				self.create_recent_files()
 
@@ -73,7 +76,11 @@ class AppForm(QMainWindow):
 
 
 
-		
+		def upd_tuning(self, parms):
+			self.msparms = parms
+			self.method['Method']['MSParms'] = self.msparms
+			self.tuning_modified = True
+			
 		def save_plot(self):
 				file_choices = "PNG (*.png)|*.png"
 				
@@ -93,6 +100,7 @@ class AppForm(QMainWindow):
 						f = open(path, "w")
 						f.write(json.dumps(self.msparms, indent=4))
 						self.statusBar().showMessage('Saved to %s' % path, 2000)
+						self.tuning_modified = False
 		def load_tuning(self):
 				file_choices = "JSON (*.json);Tuning (*.U);All Files (*)"
 				
@@ -103,8 +111,7 @@ class AppForm(QMainWindow):
 						if path.endswith(".json"): 
 							f = open(path, "r")
 							tparms = f.read()
-							self.msparms = json.loads(tparms)
-							self.method['Method']['MSParms'] = self.msparms
+							self.upd_tuning(json.loads(tparms))
 						elif path.endswith(".U"):
 							f = open(path, "rb")
 							tbin = f.read()
@@ -113,11 +120,11 @@ class AppForm(QMainWindow):
 
 							tune2meth.updatefromTuning(tbin, tparms)
 							tune2meth.updatefromTuning(tbin, mparms)
+						self.tuning_modified = False
+						self.method_modified = True
 
-						if self.methodWindow:
-							self.updMethodTabs()		
-						if self.scanWindow:
-							self.scanWindow.ms_status_area.updatepboxes()
+						self.upd_parms()
+
 		def save_method(self):
 				file_choices = "JSON (*.json)|*.json"
 				
@@ -129,7 +136,9 @@ class AppForm(QMainWindow):
 						f.write(json.dumps(self.method, indent=4))
 						f.close()
 						self.statusBar().showMessage('Saved to %s' % path, 2000)
-						
+						self.tuning_modified = False
+						self.method_modified = False
+
 		def load_method(self):
 				file_choices = "JSON (*.json);;All Files (*)"
 				
@@ -139,17 +148,26 @@ class AppForm(QMainWindow):
 				if path:
 						self.loadMethFile(path)
 		
+		def upd_parms(self):
+			if self.methodWindow:
+				self.updMethodParams()		
+			if self.scanWindow:
+				self.updScanParams()
+			if self.tuningWindow:
+				self.updTuningParams()
+				
 		def loadMethFile(self, path):
 			f = open(path, "r")
 			mparms = f.read()
 			self.method = json.loads(mparms)
 			self.msparms = self.method['Method']['MSParms']
+			self.tuning_modified = False
+			self.method_modified = False
+
 			self.methpath = path
 			self.methname = AppForm.strippedName(self.methpath)
-			if self.methodWindow:
-				self.updMethodTabs()		
-			if self.scanWindow:
-				self.scanWindow.ms_status_area.updatepboxes()
+			self.upd_parms()
+			
 			self.setCurrentFile(path)
 			
 		def save_spectrum(self):
@@ -229,9 +247,15 @@ class AppForm(QMainWindow):
 				self.tuning_mdi.close()
 			if self.inst_mdi:
 				self.inst_mdi.close()
-		def updMethodTabs(self):
-			for s in self.paramTabList:
-				s.updatepboxes()
+		def updMethodParams(self):
+			self.methodWindow.load_dictionary(self.method)
+		def updScanParams(self):
+			self.scanWindow.config_area.load_dictionary(self.msparms)
+		def updTuningParams(self):
+			self.tuningWindow.config_area.load_dictionary(self.msparms)
+
+	#for s in self.paramTabList:
+			#	s.updatepboxes()
 		def method_window(self):
 			if not self.method:
 				self.statusBar().showMessage('Error: No Method Loaded', 10000)
@@ -240,28 +264,40 @@ class AppForm(QMainWindow):
 				meth = self.method['Method']
 				AppForm.count = AppForm.count+1
 				sub = QMdiSubWindow()
-				submain = QScrollArea()
-				tabs = QTabWidget()
-				sub.setWidget(submain)
+				#submain = QScrollArea()
+				#sub.setWidget(submain)
 				sub.setWindowTitle(str(AppForm.count) + ": Method : " + AppForm.strippedName(path))
-			
-				#hbox = QHBoxLayout()
-				self.paramTabList = []
-				for heading in meth:
-					#gbox = QGroupBox(heading)
-					paramarea = QParamArea(tabs, meth[heading], heading)
-					#gboxl = QVBoxLayout()
-					#gboxl.addWidget(paramarea)
-					#gbox.setLayout(gboxl)
-					#hbox.addWidget(gbox)
-					tabs.addTab(paramarea, heading)
-					self.paramTabList.append(paramarea)
-				#submain.setLayout(hbox)
-				submain.setWidget(tabs)
+				self.tree = DictionaryTreeWidget(meth)
+				self.tree.getModel().dataChanged.connect(self.treeUpdated)
+				sub.setWidget(self.tree)
+				
+				#	tabs = QTabWidget()
+					
+				#	#hbox = QHBoxLayout()
+				#	self.paramTabList = []
+				#	for heading in meth:
+				#		#gbox = QGroupBox(heading)
+				#		paramarea = QParamArea(tabs, meth[heading], heading)
+				#		#gboxl = QVBoxLayout()
+				#		#gboxl.addWidget(paramarea)
+				#		#gbox.setLayout(gboxl)
+				#		#hbox.addWidget(gbox)
+				#		tabs.addTab(paramarea, heading)
+				#		self.paramTabList.append(paramarea)
+					#submain.setLayout(hbox)
+				#	submain.setWidget(tabs)
 				self.mdi.addSubWindow(sub)
-				sub.show()
-				self.methodWindow = submain
+				#self.methodWindow = submain
+				self.methodWindow = self.tree
 				self.method_mdi = sub
+				sub.show()
+		def treeUpdated(self):
+			#print("tree updated")
+			self.method['Method'] = self.tree.to_dict()
+			self.tuning_modified = True
+			self.method_modified = True
+			self.upd_parms()
+
 		def log_window(self, q):
 			if not self.logWindow:
 				AppForm.count = AppForm.count+1
@@ -526,7 +562,9 @@ class QTuneWindow(QWidget, Loggable):
 			self.figs = [self.fig1, self.fig2, self.fig3]
 			self.plts = [self.plt1, self.plt2, self.plt3]
 			self.canvases = [self.canvas1, self.canvas2, self.canvas3]
-			
+			#for c in self.canvases:
+			#	c.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+
 			# Bind the 'pick' event for clicking on one of the bars
 			#
 			#self.canvas.mpl_connect('pick_event', self.on_pick)
@@ -539,6 +577,10 @@ class QTuneWindow(QWidget, Loggable):
 			self.mpl_toolbar1 = NavigationToolbar(self.canvas1, self)
 			self.mpl_toolbar2 = NavigationToolbar(self.canvas2, self)
 			self.mpl_toolbar3 = NavigationToolbar(self.canvas3, self)
+			
+			#self.toolbars = [self.mpl_toolbar1, self.mpl_toolbar2, self.mpl_toolbar3]
+			#for t in self.toolbars:
+			#	t.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 			# Other GUI controls
 			# 
 			#self.textbox = QLineEdit()
@@ -583,12 +625,17 @@ class QTuneWindow(QWidget, Loggable):
 					hbox.setAlignment(w, Qt.AlignVCenter)
 			
 			
-			self.ms_status_area = QParamArea(self, params)
-			
+			#self.ms_status_area = QParamArea(self, params)
+			self.ms_status_area = QStatusArea(self, heading="MS")
+			self.config_area = DictionaryTreeWidget(params)
+			self.config_area.getModel().dataChanged.connect(self.treeUpdated)
+
+			self.config_area.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+
 			vbox1 = QVBoxLayout()
 			vbox1.addWidget(self.canvas1)
 			vbox1.addWidget(self.mpl_toolbar1)
-			
+
 			vbox2 = QVBoxLayout()
 			vbox2.addWidget(self.canvas2)
 			vbox2.addWidget(self.mpl_toolbar2)
@@ -601,17 +648,25 @@ class QTuneWindow(QWidget, Loggable):
 			hboxg.addLayout(vbox1)
 			hboxg.addLayout(vbox2)
 			hboxg.addLayout(vbox3)
-			
 		
 			vbox = QVBoxLayout()
-			vbox.addWidget(self.ledbox)
 			vbox.addLayout(hboxg)
 			vbox.addLayout(hbox)
 
 			bighbox = QHBoxLayout()
 			bighbox.addLayout(vbox)
 			#bighbox.addLayout(phbox) 
-			bighbox.addWidget(self.ms_status_area)
+			
+			vbox4 = QVBoxLayout()
+			vbox4.addWidget(self.ledbox)
+			vbox4.addWidget(self.ms_status_area)
+			
+			dummy = QWidget()
+			dummy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+			vbox4.addWidget(dummy)
+
+			bighbox.addLayout(vbox4)
+			bighbox.addWidget(self.config_area)
 			
 			self.setLayout(bighbox)
 			self.scan_button.setEnabled(False)
@@ -727,8 +782,11 @@ class QTuneWindow(QWidget, Loggable):
 					a.remove()
 				self.anns = anns
 				self.canvases[x].draw()
-
-			
+		def treeUpdated(self):
+			#self.logl("tree updated")
+			tparms = self.config_area.to_dict()
+			self.runner.updateMsParms(tparms)
+			self.main.upd_tuning(tparms)
 		def on_draw(self):
 				""" Redraws the figure
 				"""
@@ -860,8 +918,13 @@ class QSpectrumScan(QWidget, Loggable):
 					hbox.setAlignment(w, Qt.AlignVCenter)
 			
 			
-			self.ms_status_area = QParamArea(self, params)
-			
+			#self.ms_status_area = QParamArea(self, params)
+			self.ms_status_area = QStatusArea(self, heading="MS")
+			self.config_area = DictionaryTreeWidget(params)
+			self.config_area.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+			self.config_area.getModel().dataChanged.connect(self.treeUpdated)
+
+
 			dummy = QWidget()
 			dummy.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
@@ -881,8 +944,12 @@ class QSpectrumScan(QWidget, Loggable):
 			vbox3 = QVBoxLayout()
 			vbox3.addWidget(self.ledbox)
 			vbox3.addWidget(self.ms_status_area)
-			bighbox.addLayout(vbox3)
 
+			dummy2 = QWidget()
+			dummy2.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+			vbox3.addWidget(dummy2)
+			bighbox.addLayout(vbox3)
+			bighbox.addWidget(self.config_area)
 			self.setLayout(bighbox)
 			self.scan_button.setEnabled(False)
 			self.on_draw()
@@ -940,6 +1007,10 @@ class QSpectrumScan(QWidget, Loggable):
 					self.spectrum[0].plot(self.plt)
 				self.canvas.draw()
 				self.vline = self.plt.axvline(x=0., color="k")
+		def treeUpdated(self):
+			tparms = self.config_area.to_dict()
+			self.runner.updateMsParms(tparms)
+			self.main.upd_tuning(tparms)			#self.logl("tree updated")
 		
 		def closeEvent(self, event):
 			# do stuff

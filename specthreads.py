@@ -318,7 +318,8 @@ class threadRunner():
 				self.main.statusBar().showMessage('Tune Done: ' + emsg, 2000)
 				self.main.progress.setValue(100)
 				self.msparms = parms
-				self.main.msparms = parms
+				self.main.upd_tuning(parms)
+				#self.main.msparms = parms
 			else:
 				self.main.statusBar().showMessage('Tune Failed: ' + emsg, 10000)
 				self.main.progress.setValue(0)
