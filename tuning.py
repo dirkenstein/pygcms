@@ -487,8 +487,11 @@ class HP5971Tuning():
 		self.voltofavg =  nearest.iloc[0]['voltage']
 		if maxidx == maxvidx:
 			self.chosenvoltage = self.voltofavg
+			self.logl ("Chosen voltage(Avg): ", self.chosenvoltage)
 		else:
 			self.chosenvoltage = self.voltofmax
+			self.logl ("Chosen voltage(Max): ", self.chosenvoltage)
+
 		
 	def readRampRecs(self, parm, n=0):
 		nrec = self.hpmsd.getNrec()
@@ -498,7 +501,8 @@ class HP5971Tuning():
 		self.hpmsd.getSpecs()[0].rampBuild( self.start(self.defaultTuningParms, parm), self.step(self.defaultTuningParms, parm))
 		self.rampMax()
 		ovolt = self.ov(self.defaultTuningParms , parm)
-		self.emitRamp(self.hpmsd.getSpecs()[0], n,  self.tunepk[n], parm, ovolt)
+		nvolt = self.chosenvoltage
+		self.emitRamp(self.hpmsd.getSpecs()[0], n,  self.tunepk[n], parm, ovolt, nvolt)
 		
 	def rampIt(self, mass, nam, parm, dwell=35):
 		self.rampInit()

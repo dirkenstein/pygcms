@@ -4,15 +4,15 @@ import time
 
 try:
     import visa_test as visa
-except ModuleNotFoundError: 
+except ImportError: 
     import visa
 
 class BusReader():
-	def __init__(self, logl=print):
+	def __init__(self, logl=print, devs=None):
 		self.logl = logl
 		self.insts = {}
 		self.instidx = {}
-		self.getdevices()
+		self.getdevices(rsrcs=devs)
 		self.stb = 0
 		self.last_stb = 0
 
@@ -101,9 +101,10 @@ class BusReader():
 		##								print	(stb)
 		return d
 
-	def getdevices(self):
+	def getdevices(self, rsrcs=None):
 		self.rm = visa.ResourceManager()
-		rsrcs = self.rm.list_resources()
+		if not rsrcs:
+			rsrcs = self.rm.list_resources()
 		self.insts = {}
 		instname=""
 		instrec={}

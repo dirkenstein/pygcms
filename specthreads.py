@@ -16,7 +16,7 @@ import json
 import msfileread as msfr
 
 class threadRunner():
-		def __init__(self,  parent, main, method, msparms, methname, fname, scan_thread, showNewScan, showTuning, logl=print, forRun=False):
+		def __init__(self,  parent, main, devs, method, msparms, methname, fname, scan_thread, showNewScan, showTuning, logl=print, forRun=False):
 			self.progress_thread = QThread()
 			self.progress_thread_o = None
 			
@@ -43,7 +43,8 @@ class threadRunner():
 			self.scan_thread = scan_thread
 			self.showNewScan = showNewScan
 			self.showTuning = showTuning
-			self.forRun = forRun 
+			self.forRun = forRun
+			self.devs = devs 
 			self.fname = fname
 			self.methname = methname
 		
@@ -105,7 +106,7 @@ class threadRunner():
 				
 				if not self.init_thread.isRunning():
 					#self.logl("No init Thread")
-					self.init_thread_o = initThread(self.method, self.logl, forRun=self.forRun)
+					self.init_thread_o = initThread(self.method, self.logl, devs=self.devs, forRun=self.forRun)
 					self.init_thread_o.progress_update.connect(self.updateProgressBar)
 					self.init_thread_o.inst_status.connect(self.instStatus)
 					self.init_thread_o.init_status.connect(self.setInitialized)
@@ -318,7 +319,11 @@ class threadRunner():
 				self.main.statusBar().showMessage('Tune Done: ' + emsg, 2000)
 				self.main.progress.setValue(100)
 				self.msparms = parms
+				#f = open("tunnew2.json", "w")
+				#f.write(json.dumps(parms, indent=4))
+				#f.close()
 				self.main.upd_tuning(parms)
+				self.main.upd_parms()
 				#self.main.msparms = parms
 			else:
 				self.main.statusBar().showMessage('Tune Failed: ' + emsg, 10000)
@@ -365,7 +370,7 @@ class initThread(QObject):
 		update_init = pyqtSignal()
 		run_stop = pyqtSignal()
 
-		def __init__(self, method, logl, forRun=False):
+		def __init__(self, method, logl, devs=None, forRun=False):
 				QObject.__init__(self)
 				self.reboot = False
 				self.method = method
@@ -378,6 +383,7 @@ class initThread(QObject):
 				self.hpmsd = None
 				self.hpgc = None
 				self.hpinj = None
+				self.devs = devs
 				#self.run_init.connect(self.doInit)
 
 				
@@ -398,7 +404,7 @@ class initThread(QObject):
 			stime = 2.0
 			while not self.init:
 					try:
-						self.br = busreader.BusReader(logl=self.logl)
+						self.br = busreader.BusReader(devs=self.devs,logl=self.logl)
 						self.progress_update.emit(10)
 					except Exception as e:
 						self.logl (e)
@@ -530,7 +536,7 @@ class statusThread(QObject):
 
 class scanThread(QObject):
 		progress_update = pyqtSignal(int)
-		scan_done = pyqtSignal(list)
+		scan_done = pyqtSignal(list, list)
 		scan_status = pyqtSignal(bool, str)
 		scan_info = pyqtSignal(str)
 
@@ -558,7 +564,7 @@ class scanThread(QObject):
 				try:
 					#self.scan_status.emit(True, 'Starting Scan')
 					self.hpmsd.getAScan(self.parms, self.progress_update.emit)	
-					self.scan_done.emit([self.hpmsd.getSpec()])
+					self.scan_done.emit([self.hpmsd.getSpec()], [''])
 					self.scan_status.emit(True, 'Complete')
 
 				except hp5971.HP5971Exception as e1:
@@ -580,7 +586,7 @@ class scanThread(QObject):
 
 class tripleScanThread(QObject):
 		progress_update = pyqtSignal(int)
-		scan_done = pyqtSignal(list)
+		scan_done = pyqtSignal(list, list)
 		scan_status = pyqtSignal(bool, str)
 		scan_info = pyqtSignal(str)
 		run_scan = pyqtSignal()
@@ -612,20 +618,23 @@ class tripleScanThread(QObject):
 					self.scan_info.emit('Run Scan')
 					#self.scan_status.emit(True, 'Starting Scan')
 					old_sparms = copy.deepcopy(self.parms['Scan'])
-					self.hpmsd.adjScanParms(self.parms['Scan'], self.hpmsd.tunePeak(self.parms, 1))
+					pks = [self.hpmsd.tunePeak(self.parms, 1),
+								self.hpmsd.tunePeak(self.parms, 2),
+								self.hpmsd.tunePeak(self.parms, 3)]
+					self.hpmsd.adjScanParms(self.parms['Scan'], pks[0])
 					self.hpmsd.getPartialScan(self.parms, self.progress_update.emit, moreScans=True)
 					spec1 = self.hpmsd.getSpec()
 					#time.sleep(1)
-					self.hpmsd.adjScanParms(self.parms['Scan'], self.hpmsd.tunePeak(self.parms, 2))
+					self.hpmsd.adjScanParms(self.parms['Scan'], pks[1])
 					self.hpmsd.getPartialScan(self.parms, self.progress_update.emit, moreScans=True)	
 					spec2 = self.hpmsd.getSpec()
 					#time.sleep(1)
 
-					self.hpmsd.adjScanParms(self.parms['Scan'], self.hpmsd.tunePeak(self.parms, 3))
+					self.hpmsd.adjScanParms(self.parms['Scan'], pks[2])
 					self.hpmsd.getPartialScan(self.parms, self.progress_update.emit, moreScans=False)	
 					spec3 = self.hpmsd.getSpec()
 
-					self.scan_done.emit([spec1, spec2, spec3])
+					self.scan_done.emit([spec1, spec2, spec3], pks)
 					self.parms['Scan'].update(old_sparms)
 					self.scan_status.emit(True, 'Complete')
 
@@ -734,8 +743,8 @@ class tuningThread(QObject):
 			self.tune_spec.emit(n, False,True, [spec, pk])
 			
 			#spec.plotit(name = ' ' + str(self.tunepk[n]))
-		def emitRamp(self, spec, n, pk, parm, ovolt):
-			self.tune_spec.emit(n, True, False, [spec, parm, ovolt, pk])
+		def emitRamp(self, spec, n, pk, parm, ovolt, nvolt):
+			self.tune_spec.emit(n, True, False, [spec, parm, ovolt, nvolt, pk])
 			#spec.plotrampit(' ' +parm + ' ' + str(self.tunepk[n]), currvolt=ovolt)
 
 class runProgressThread(QObject):

@@ -178,19 +178,29 @@ class Node(object):
 						if not self.vtype:
 							self.value = value
 						elif self.vtype == "f":
-							f= float(value)
+							try:
+								f= float(value)
+							except Exception as e:
+								f = 0
 							if self.vrange and self.vrange[0] <= f and self.vrange[1] >= f:
 								self.value = f
 							else:
 								print ("value " +str(f) + " out of range")
 						elif self.vtype == "i":
-							i= int(value)
+							try:
+								i= int(value)
+							except Exception as e:
+								i = 0
 							if  self.vrange and self.vrange[0] <= i and self.vrange[1] >= i:
 								self.value = i
 							else:
 								print ("value " +str(i)  + " out of range")
 						elif self.vtype == "b":
-							self.value  = bool(value)
+							try:
+								b  = bool(value)
+							except Exception as e:
+								b = False
+							self.value = b
 						else:
 							print ("invalid value " + str(value))
 

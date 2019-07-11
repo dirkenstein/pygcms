@@ -65,9 +65,9 @@ class AppForm(QMainWindow):
 				self.method = None
 				self.tuning_modified = False
 				self.method_modified = False
+				self.devs = None
 				self.loadparam()
 				self.create_recent_files()
-
 				self.create_menu()
 				self.updateRecentFileActions()
 
@@ -78,7 +78,8 @@ class AppForm(QMainWindow):
 
 		def upd_tuning(self, parms):
 			self.msparms = parms
-			self.method['Method']['MSParms'] = self.msparms
+			if self.method:
+				self.method['Method']['MSParms'] = self.msparms
 			self.tuning_modified = True
 			
 		def save_plot(self):
@@ -88,8 +89,12 @@ class AppForm(QMainWindow):
 												'Save file', '', 
 												file_choices)
 				if path:
-						self.canvas.print_figure(path, dpi=self.dpi)
+					if self.scanWindow:
+						self.scanWindow.canvas.print_figure(path, dpi=self.scanWindow.dpi)
 						self.statusBar().showMessage('Saved to %s' % path, 2000)
+					else:
+						self.statusBar().showMessage('No plot to save...', 2000)
+
 		def save_tuning(self):
 				file_choices = "JSON (*.json)|*.json"
 				
@@ -97,10 +102,7 @@ class AppForm(QMainWindow):
 												'Save tuning file', '', 
 												file_choices)
 				if path:
-						f = open(path, "w")
-						f.write(json.dumps(self.msparms, indent=4))
-						self.statusBar().showMessage('Saved to %s' % path, 2000)
-						self.tuning_modified = False
+					saveTunFile(path)
 		def load_tuning(self):
 				file_choices = "JSON (*.json);Tuning (*.U);All Files (*)"
 				
@@ -122,7 +124,7 @@ class AppForm(QMainWindow):
 							tune2meth.updatefromTuning(tbin, mparms)
 						self.tuning_modified = False
 						self.method_modified = True
-
+						self.tunpath = path
 						self.upd_parms()
 
 		def save_method(self):
@@ -132,12 +134,7 @@ class AppForm(QMainWindow):
 												'Save method file', '', 
 												file_choices)
 				if path:
-						f = open(path, "w")
-						f.write(json.dumps(self.method, indent=4))
-						f.close()
-						self.statusBar().showMessage('Saved to %s' % path, 2000)
-						self.tuning_modified = False
-						self.method_modified = False
+					self.saveMethFile(path)
 
 		def load_method(self):
 				file_choices = "JSON (*.json);;All Files (*)"
@@ -155,10 +152,41 @@ class AppForm(QMainWindow):
 				self.updScanParams()
 			if self.tuningWindow:
 				self.updTuningParams()
-				
+		
+		def saveTunFile(self, path):
+			try:
+				f = open(path, "w")
+				f.write(json.dumps(self.msparms, indent=4))
+				f.close()
+			except Exception as e:
+				self.statusBar().showMessage('Failed to save %s : %s' % (path, str(e)), 4000)
+				return
+			self.statusBar().showMessage('Saved to %s' % path, 2000)
+			self.tuning_modified = False
+			
+		def saveMethFile(self, path):
+			if self.method:
+				try:
+					f = open(path, "w")
+					f.write(json.dumps(self.method, indent=4))
+					f.close()
+				except Exception as e:
+					self.statusBar().showMessage('Failed to save %s : %s' % (path, str(e)), 4000)
+					return
+				self.statusBar().showMessage('Saved to %s' % path, 2000)
+				self.tuning_modified = False
+				self.method_modified = False
+			else:
+				self.statusBar().showMessage('No method to save...', 2000)
+
 		def loadMethFile(self, path):
-			f = open(path, "r")
-			mparms = f.read()
+			try:
+				f = open(path, "r")
+				mparms = f.read()
+				f.close()
+			except Exception as e:
+				self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
+				return
 			self.method = json.loads(mparms)
 			self.msparms = self.method['Method']['MSParms']
 			self.tuning_modified = False
@@ -169,17 +197,21 @@ class AppForm(QMainWindow):
 			self.upd_parms()
 			
 			self.setCurrentFile(path)
-			
+			self.statusBar().showMessage('Loaded %s' % path, 2000)
+
 		def save_spectrum(self):
 				file_choices = "BIN (*.bin)|*.bin"
 				
 				path, choice = QFileDialog.getSaveFileName(self, 
 												'Save file', '', 
 												file_choices)
-				if path and self.scanWindow:
+				if path:
+					if self.scanWindow:
 						f = open(path, "w+b");
-						f.write(self.scanWindow.spectrum.getData())
-						
+						f.write(self.scanWindow.spectrum[0].getData())
+						f.close()
+					self.statusBar().showMessage('No spectrum to save...', 2000)
+
 		
 		def load_spectrum(self):
 				file_choices = "BIN (*.bin);;All Files (*)"
@@ -187,11 +219,15 @@ class AppForm(QMainWindow):
 				path, choices = QFileDialog.getOpenFileName(self, 
 												'Load file', '', 
 												file_choices)
-				if path and self.scanWindow:
+				if path:
+					if self.scanWindow:
 						#self.canvas.print_figure(path, dpi=self.dpi)
-						self.scanWindow.spectrum = readspec.FileSpec(path)
+						self.scanWindow.spectrum = [readspec.FileSpec(path)]
 						self.statusBar().showMessage('Loaded %s' % path, 2000)
 						self.scanWindow.on_draw()
+					else:
+						self.statusBar().showMessage('No scan window...', 2000)
+
 		
 		def on_about(self):
 				msg = """ 
@@ -208,14 +244,26 @@ class AppForm(QMainWindow):
 	
 	
 		def loadparam(self):
-				f = open("parms.json", "r")
+				fl = "parms.json"
+				f = open(fl, "r")
 				tparms = f.read()
+				f.close()
 				self.msparms = json.loads(tparms)
+				self.tunpath = fl
+				try:
+					f = open("devices.json", "r")
+					tdev = f.read()
+					f.close()
+					self.devs = json.loads(tdev)['Devs']
+				except Exception as e:
+					#print (e)
+					pass
+				#print(self.devs)
 		def tune_window(self):
 			if not self.tuningWindow:
 				AppForm.count = AppForm.count+1
 				sub = QMdiSubWindow()
-				submain = QTuneWindow(sub, self, params=self.msparms)
+				submain = QTuneWindow(sub, self, params=self.msparms, devs=self.devs)
 				sub.setWidget(submain)
 				sub.setWindowTitle(str(AppForm.count) + ": " + "Tuning")
 				self.mdi.addSubWindow(sub)
@@ -233,7 +281,7 @@ class AppForm(QMainWindow):
 			if not self.scanWindow:
 				AppForm.count = AppForm.count+1
 				sub = QMdiSubWindow()
-				submain = QSpectrumScan(sub, self, params=self.msparms)
+				submain = QSpectrumScan(sub, self, params=self.msparms, devs=self.devs)
 				sub.setWidget(submain)
 				sub.setWindowTitle(str(AppForm.count) + ": " + "Scan Control")
 				self.mdi.addSubWindow(sub)
@@ -252,6 +300,7 @@ class AppForm(QMainWindow):
 		def updScanParams(self):
 			self.scanWindow.config_area.load_dictionary(self.msparms)
 		def updTuningParams(self):
+			#print(self.msparms)
 			self.tuningWindow.config_area.load_dictionary(self.msparms)
 
 	#for s in self.paramTabList:
@@ -325,7 +374,7 @@ class AppForm(QMainWindow):
 				if not self.instWindow:
 					AppForm.count = AppForm.count+1
 					sub = QMdiSubWindow()
-					self.instrument = QInstControl(sub, self, self.method, self.methname)
+					self.instrument = QInstControl(sub, self, self.method, self.methname, devs=self.devs)
 					sub.setWidget(self.instrument)
 					sub.setWindowTitle("Instrument: "+str(AppForm.count))
 					self.mdi.addSubWindow(sub)
@@ -511,6 +560,35 @@ class AppForm(QMainWindow):
 						action.setCheckable(True)
 				return action
 
+		def closeEvent(self, event):
+			if self.method_modified or self.tuning_modified:
+				msg = QMessageBox()
+				msg.setIcon(QMessageBox.Warning)
+			
+				msg.setText("Save file before exiting?")
+				if self.method_modified:
+					pth = self.methpath
+				elif self.tuning_modified:
+					pth = self.tunpath
+				msg.setInformativeText("file: " + pth)
+				msg.setWindowTitle("Save Method")
+				#msg.setDetailedText("The details are as follows:")
+				msg.setStandardButtons(QMessageBox.Save |QMessageBox.Close | QMessageBox.Cancel)
+				#msg.buttonClicked.connect(msgbtn)
+			
+				retval = msg.exec_()
+				#print "value of pressed message box button:", retval
+				if retval == QMessageBox.Save:
+					if self.method_modified:
+						self.saveMethFile(self.methpath)
+					elif self.tuning_modified:
+						self.saveTunFile(self.tunpath)
+					event.accept()
+				elif retval == QMessageBox.Close:
+					event.accept()	
+				else:
+					event.ignore() # let the window close
+
 class Loggable:
 	def __init__(self):
 		self.logfile = open('MSD.LOG', "a+")
@@ -531,7 +609,7 @@ class Loggable:
 
 
 class QTuneWindow(QWidget, Loggable):
-		def __init__(self, parent = None, main=None, params=None):
+		def __init__(self, parent = None, main=None, params=None, devs=None):
 			super().__init__()
 			#self.msparms = params
 			self.closed = False
@@ -539,7 +617,7 @@ class QTuneWindow(QWidget, Loggable):
 			self.spectrum = [None, None, None]
 			self.ledbox = QLedPanel()
 
-			self.runner = threadRunner(self, main, None, params, None, None, tripleScanThread, self.showNewScan, self.showNewTune, logl=self.logl, forRun=False)
+			self.runner = threadRunner(self, main, devs, None, params, None, None, tripleScanThread, self.showNewScan, self.showNewTune, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -670,7 +748,7 @@ class QTuneWindow(QWidget, Loggable):
 			
 			self.setLayout(bighbox)
 			self.scan_button.setEnabled(False)
-			self.anns = []
+			self.anns = [[],[],[]]
 			self.init_peak_detect()
 			self.on_draw()
 			self.runner.on_init()
@@ -702,9 +780,11 @@ class QTuneWindow(QWidget, Loggable):
 					self.vline.set_data([xe, xe], [0,1] )
 					self.canvas.draw()
 				
-		def showNewScan(self, rs):
+		def showNewScan(self, rs, pk):
 				self.spectrum = rs
 				self.ramps = [False, False, False]
+				for n in range(3):
+					self.pk[n] =pk[n]
 				self.on_draw()
 				for n in range(3):
 					self.peak_detect(n)
@@ -716,7 +796,8 @@ class QTuneWindow(QWidget, Loggable):
 					self.ramps[n] = True
 					self.rparm[n] = rs[1]
 					self.ovolt[n] = rs[2]
-					self.pk[n] = rs[3]
+					self.nvolt[n] = rs[3]
+					self.pk[n] = rs[4]
 				else:
 					self.pk[n] = rs[1]
 				self.draw_int(n)
@@ -724,7 +805,7 @@ class QTuneWindow(QWidget, Loggable):
 					self.peak_detect(n)
 					self.draw_peak_detect(n, True)
 				if ramp:
-					self.ramp_peak(n, self.ovolt[n])
+					self.ramp_peak(n)
 					
 		def init_peak_detect(self):
 			self.maxima = [pandas.DataFrame(), pandas.DataFrame(), pandas.DataFrame()]
@@ -735,6 +816,7 @@ class QTuneWindow(QWidget, Loggable):
 			self.ramps = [False, False, False]
 			self.rparm = ["", "", ""]
 			self.ovolt = [0, 0, 0]
+			self.nvolt = [0, 0, 0]
 			self.pk = [0,0,0]
 			
 		def peak_detect(self, x):
@@ -751,16 +833,17 @@ class QTuneWindow(QWidget, Loggable):
 				self.fwhm[x] = abs(self.spline[x].roots()[1]-self.spline[x].roots()[0])
 				self.canvases[x].draw()
 
-		def ramp_peak(self, x, currvolt):
+		def ramp_peak(self, x):
 			if self.spectrum[x] != None:
 				i = self.spectrum[x].ramp
 				self.maxima[x], self.minima[x] = putil.PUtil.peaksfr(i, 'abundance','voltage')
-				if not self.maxima[x].empty:
-					self.plts[x].axvline(x=self.maxima[x].iloc[self.maxima[x]['abundance'].idxmax()]['voltage'], color='r')
-				else:
-					voltofmax = i.iloc[i['abundance'].idxmax()]['voltage']
-					self.plts[x].axvline(x=voltofmax, color='r')
-				self.plts[x].axvline(x=currvolt, color='b')
+				#if not self.maxima[x].empty:
+				#	self.plts[x].axvline(x=self.maxima[x].iloc[self.maxima[x]['abundance'].idxmax()]['voltage'], color='r')
+				#else:
+				#	voltofmax = i.iloc[i['abundance'].idxmax()]['voltage']
+				#	self.plts[x].axvline(x=voltofmax, color='r')
+				self.plts[x].axvline(x=self.ovolt[x], color='b')
+				self.plts[x].axvline(x=self.nvolt[x], color='r')
 				self.plts[x].grid()
 				self.canvases[x].draw()
 
@@ -778,9 +861,9 @@ class QTuneWindow(QWidget, Loggable):
 						anns.append(self.plts[x].annotate('%i:%.2f' % ( idx+1, r['m/z']), xy=(r['m/z'] + 0.05, r['abundance'] + self.maxab[x]*0.05)))
 				anns.append(self.plts[x].annotate("Ab %.0f Pw50 %.3f" % (self.maxima[x].iloc[maxid]['abundance'], self.fwhm[x]) , xy=(0.5, 0.75), xycoords='axes fraction'))
 
-				for a in self.anns:
+				for a in self.anns[x]:
 					a.remove()
-				self.anns = anns
+				self.anns[x] = anns
 				self.canvases[x].draw()
 		def treeUpdated(self):
 			#self.logl("tree updated")
@@ -804,12 +887,13 @@ class QTuneWindow(QWidget, Loggable):
 					
 					#self.vline = self.axes.axvline(x=0., color="k")
 		def draw_int(self, x):
-			self.plts[x].clear()        
+			self.plts[x].clear()
+			self.anns[x] = []
 			readspec.ReadSpec.axes(self.plts[x],  ' ' + str(self.pk[x]))
 			self.plts[x].grid(True)
 			if self.spectrum[x] != None:
-				f = open('mass%i.bin' % x, "w+b")
-				f.write(self.spectrum[x].getData())
+				#f = open('mass%i.bin' % x, "w+b")
+				#f.write(self.spectrum[x].getData())
 				#self.spectrum[x].smooth()	
 				if self.ramps[x]:
 					self.spectrum[x].plotramp(self.plts[x], ' ' + self.rparm[x] + ' ' + str(self.pk[x]))
@@ -837,7 +921,7 @@ class QTuneWindow(QWidget, Loggable):
 			event.accept()
 						
 class QSpectrumScan(QWidget, Loggable):
-		def __init__(self, parent = None, main=None, params=None):
+		def __init__(self, parent = None, main=None, params=None, devs=None):
 			super().__init__()
 			#self.msparms = params
 			#self.method = method
@@ -846,7 +930,7 @@ class QSpectrumScan(QWidget, Loggable):
 			self.main = main
 			self.spectrum = None
 		
-			self.runner = threadRunner(self, main, None, params, None, None, scanThread, self.showNewScan, None, logl=self.logl, forRun=False)
+			self.runner = threadRunner(self, main, devs, None, params, None, None, scanThread, self.showNewScan, None, logl=self.logl, forRun=False)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -983,7 +1067,7 @@ class QSpectrumScan(QWidget, Loggable):
 					self.vline.set_data([xe, xe], [0,1] )
 					self.canvas.draw()
 				
-		def showNewScan(self, rs):
+		def showNewScan(self, rs, pk):
 				self.spectrum = rs	
 				self.on_draw()
 	
@@ -1058,14 +1142,14 @@ class QLedPanel(QWidget):
 		self.leds[ledno].turn_off()
 
 class QInstControl(QWidget,Loggable):
-		def __init__(self, parent = None, main=None, method=None, methname =''):
+		def __init__(self, parent = None, main=None, method=None, methname ='', devs=None):
 			super().__init__(parent)
 			self.method = method
 			self.methname = methname
 			self.fname = ''
 			self.closed = False
 			self.main = main
-			self.runner = threadRunner(self, main, method, None, self.methname, self.fname, None, self.showNewScan, None, logl=self.logl, forRun=True)
+			self.runner = threadRunner(self, main, devs,  method, None, self.methname, self.fname, None, self.showNewScan, None, logl=self.logl, forRun=True)
 
 			vboxscan = QVBoxLayout()
 			

@@ -131,10 +131,17 @@ def node_structure_from_dict(datadict, parent=None, root_node=None):
 				node = Node(name, parent)
 				if isinstance(data, dict):
 						if "value" in data:
+							node.vtype = data["type"]
+							v = data["value"]
+							if node.vtype == "i":
+								node.value = int(v)
+							elif node.vtype == "f":
+								node.value = float(v)
+							else:
+								node.value = v
 							if "range" in data:
 								node.vrange = data["range"]
-							node.value = data["value"]
-							node.vtype = data["type"]
+							
 							if "step" in data:
 								node.step = data["step"]
 							if "floc" in data:
