@@ -17,8 +17,8 @@ Known to work on Mac, Linux and Windows
 
 Uses control via VISA using pyvisa and optionally pyvisa-py and linux-gpib 
 
-Supports remote running using rpyc - useful for using a Raspberry Pi as 
-   a GPIB-Ethernet adapter
+Supports remote running using rpyc- useful for using a Raspberry Pi as 
+a GPIB-Ethernet adapter
 
 Getting Started
 ***************
