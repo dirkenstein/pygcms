@@ -73,9 +73,66 @@ class AppForm(QMainWindow):
 
 				self.create_main_frame()
 				self.create_status_bar()
+				#self.loadpath = 'c:\\users\\dirk\\Desktop\\pyspec'
+				#self.rmthost = '192.168.29.102'
+				self.rmthost=''
+				self.loadpath=''
+				self.rmtport=18812
+				cdefs = {
+					"Enabled": False,
+					"Host":"",
+					"Port": 18812,
+					"Path":""
+				}
+				ddefs = {
+					"AutoDetect": True,
+					"Board": 0,
+					"5971":0,
+					"5890":0,
+					"7673":0
+				}
+				self.csettings = QKeySettings('Connection', cdefs, 65535, self.setConn )
+				self.dsettings = QKeySettings('Devs', ddefs , 31, self.setDevs)
+				self.setDevs()
+				self.setConn()
+				
+		def buildDev(board, addr):
+			return 'GPIB'+ str(board) + '::' + str(addr) + '::INSTR'
+		
+		def setDevs(self):
+			board = self.dsettings.getSetting("Board")
+			#print (self.dsettings.getSetting("AutoDetect"))
+			enbl = self.dsettings.getSetting("AutoDetect")
+			devs = [ AppForm.buildDev(board, self.dsettings.getSetting("5971")),
+				AppForm.buildDev(board, self.dsettings.getSetting("5890")), 
+				AppForm.buildDev(board, self.dsettings.getSetting("7673")) ]
+			if enbl:
+				self.devs = None
+			else:
+				self.devs = devs
+			if self.scanWindow:
+				self.scanWindow.runner.updateDevs(devs)
+			if self.tuningWindow:
+				self.tuningWindow.runner.updateDevs(devs)
+			if self.instWindow:
+				self.instWindow.runner.updateDevs(devs)
 
-
-
+		def setConn(self):
+			if self.csettings.getSetting("Enabled"):
+				self.rmthost= self.csettings.getSetting("Host")
+				self.loadpath=self.csettings.getSetting("Path")
+				self.rmtport=self.csettings.getSetting("Port")
+			else:
+				self.rmthost=''
+				self.loadpath=''
+				self.rmtport=18812
+			if self.scanWindow:
+				self.scanWindow.runner.updateConn(self.rmthost, self.rmtport, self.loadpath)
+			if self.tuningWindow:
+				self.tuningWindow.runner.updateConn(self.rmthost, self.rmtport, self.loadpath)
+			if self.instWindow:
+				self.instWindow.runner.updateConn(self.rmthost, self.rmtport, self.loadpath)
+	
 		def upd_tuning(self, parms):
 			self.msparms = parms
 			if self.method:
@@ -152,7 +209,9 @@ class AppForm(QMainWindow):
 				self.updScanParams()
 			if self.tuningWindow:
 				self.updTuningParams()
-		
+			if self.instWindow:
+				self.updInstParams()
+				
 		def saveTunFile(self, path):
 			try:
 				f = open(path, "w")
@@ -250,20 +309,23 @@ class AppForm(QMainWindow):
 				f.close()
 				self.msparms = json.loads(tparms)
 				self.tunpath = fl
-				try:
-					f = open("devices.json", "r")
-					tdev = f.read()
-					f.close()
-					self.devs = json.loads(tdev)['Devs']
-				except Exception as e:
-					#print (e)
-					pass
-				#print(self.devs)
+				#try:
+				#	f = open("devices.json", "r")
+				#	tdev = f.read()
+				#	f.close()
+				#	self.devs = json.loads(tdev)['Devs']
+				#except Exception as e:
+				#	#print (e)
+				#	pass
+				##print(self.devs)
 		def tune_window(self):
 			if not self.tuningWindow:
 				AppForm.count = AppForm.count+1
 				sub = QMdiSubWindow()
-				submain = QTuneWindow(sub, self, params=self.msparms, devs=self.devs)
+				self.setDevs()
+				self.setConn()
+				submain = QTuneWindow(sub, self, params=self.msparms, devs=self.devs, 
+					host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 				sub.setWidget(submain)
 				sub.setWindowTitle(str(AppForm.count) + ": " + "Tuning")
 				self.mdi.addSubWindow(sub)
@@ -281,7 +343,11 @@ class AppForm(QMainWindow):
 			if not self.scanWindow:
 				AppForm.count = AppForm.count+1
 				sub = QMdiSubWindow()
-				submain = QSpectrumScan(sub, self, params=self.msparms, devs=self.devs)
+				self.setDevs()
+				self.setConn()
+				#print(self.devs)
+				submain = QSpectrumScan(sub, self, params=self.msparms, devs=self.devs, 
+						host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 				sub.setWidget(submain)
 				sub.setWindowTitle(str(AppForm.count) + ": " + "Scan Control")
 				self.mdi.addSubWindow(sub)
@@ -298,10 +364,14 @@ class AppForm(QMainWindow):
 		def updMethodParams(self):
 			self.methodWindow.load_dictionary(self.method)
 		def updScanParams(self):
+			self.scanWindow.runner.updateMsParms(self.msparms)
 			self.scanWindow.config_area.load_dictionary(self.msparms)
 		def updTuningParams(self):
 			#print(self.msparms)
+			self.tuningWindow.runner.updateMsParms(self.msparms)
 			self.tuningWindow.config_area.load_dictionary(self.msparms)
+		def updInstParams(self):
+			self.instWindow.runner.updateMethod(self.method, self.methname)
 
 	#for s in self.paramTabList:
 			#	s.updatepboxes()
@@ -362,7 +432,16 @@ class AppForm(QMainWindow):
 			else:
 				self.log_mdi.show()
 				self.logWindow.show()
-		
+		def preferences_window(self, q):
+			tabs = {
+				"Remote Connection" : self.csettings,
+				"Devices": self.dsettings
+			}
+			prefdlg = QPrefsDialog(tabs, self)
+			for t in tabs.keys():
+				tabs[t].setParent(prefdlg)
+			prefdlg.show()
+
 		def doLog(self, logls):
 			if self.logText:
 				self.logText.appendPlainText(logls)
@@ -374,7 +453,10 @@ class AppForm(QMainWindow):
 				if not self.instWindow:
 					AppForm.count = AppForm.count+1
 					sub = QMdiSubWindow()
-					self.instrument = QInstControl(sub, self, self.method, self.methname, devs=self.devs)
+					self.setDevs()
+					self.setConn()
+					self.instrument = QInstControl(sub, self, self.method, self.methname, 
+							devs=self.devs, host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 					sub.setWidget(self.instrument)
 					sub.setWindowTitle("Instrument: "+str(AppForm.count))
 					self.mdi.addSubWindow(sub)
@@ -532,8 +614,11 @@ class AppForm(QMainWindow):
 				about_action = self.create_action("&About", 
 						shortcut='F1', slot=self.on_about, 
 						tip='About the demo')
-				
 				self.add_actions(self.help_menu, (about_action,))
+				self.application_menu = self.menuBar().addMenu("&Application")
+				preferences_action = self.create_action("Preferences", shortcut=None, 
+					slot=self.preferences_window, tip=None)
+				self.add_actions(self.application_menu, (preferences_action,))
 
 		def add_actions(self, target, actions):
 				for action in actions:
@@ -589,6 +674,107 @@ class AppForm(QMainWindow):
 				else:
 					event.ignore() # let the window close
 
+class QPrefsDialog(QDialog):
+		def __init__(self, tabs,  parent = None):
+			super().__init__(parent)
+			self.setWindowTitle("Preferences")
+			box = QVBoxLayout()
+			self.tabs = QTabWidget()
+			for k in tabs.keys():
+				self.tabs.addTab(tabs[k], k)
+			box.addWidget(self.tabs)
+			self.setLayout(box)
+
+class QKeySettings(QWidget):
+		def __init__(self, key, default, intrange, applyer=None, parent = None, *args):
+			super().__init__(parent, *args)
+			self.key = key
+			self.settings = QSettings('Muppetastic', 'PySpec')
+			self.applyer = applyer
+			val = self.settings.value(key)
+			#val = None
+			#spaths = None
+			if not val:
+				self.ksettings = default
+				self.settings.setValue(key, self.ksettings)
+			else:
+				self.ksettings = val
+			self.editksettings = self.ksettings
+
+			self.parent = parent
+			n = 0
+			plist = []
+			group = QGroupBox(key)
+			pg = QGridLayout()
+			for k in self.ksettings.keys():
+				pl = QLabel (k)
+				v = self.ksettings[k]
+				if isinstance(v, str):
+					pt = QLineEdit(v)
+					pt.setMinimumWidth(200)
+					pt.editingFinished.connect(self.on_parm_update)
+					pg.addWidget(pl, n, 0)
+					pg.addWidget(pt, n, 1)
+				elif isinstance(v, bool):
+					pt = QCheckBox(k)
+					pt.setChecked(v)
+					pt.stateChanged.connect(self.on_parm_update)
+					pg.addWidget(pt, n, 0)
+				elif isinstance(v, int):
+					pt = QSpinBox()
+					pt.setMaximum(intrange)
+					pt.setValue(v)
+					pt.valueChanged.connect(self.on_parm_update)
+					pg.addWidget(pl, n, 0)
+					pg.addWidget(pt, n, 1)
+				else:
+					print("bad type: ", v)
+				plist.append((key, k, pl, pt))
+				n += 1
+			group.setLayout(pg)
+			self.plist = plist
+			bbox = QDialogButtonBox(QDialogButtonBox.Ok |
+															QDialogButtonBox.Apply |
+															QDialogButtonBox.Cancel
+															)
+	 
+			bbox.accepted.connect(self.onOk)
+			bbox.rejected.connect(self.onCancel)
+			btn = bbox.button(QDialogButtonBox.Apply)
+			btn.clicked.connect(self.onApply)
+			layout = QVBoxLayout(self)
+			layout.addWidget(group)
+			layout.addWidget(bbox)
+			self.setLayout(layout)
+		 
+
+		def getSetting(self, name):
+			return self.ksettings[name]
+		
+		def on_parm_update(self):
+			for g, k, wtl, wtb in self.plist:
+				v = self.editksettings[k]
+				if isinstance(v, str):
+					self.editksettings[k] = wtb.text()
+				elif isinstance(v, bool):
+					self.editksettings[k] = bool(wtb.isChecked())
+					#print(wtb.text(), self.editksettings[k])
+				elif isinstance(v, int):
+					self.editksettings[k] = int(wtb.value())
+					
+		def onApply(self):
+			self.ksettings = self.editksettings
+			self.settings.setValue(self.key, self.ksettings)
+			self.applyer()
+
+		def onOk(self):
+			self.onApply()
+			self.parent.close()
+		def onCancel(self):
+			self.parent.close()
+		def setParent(self, parent):
+			self.parent = parent
+
 class Loggable:
 	def __init__(self):
 		self.logfile = open('MSD.LOG', "a+")
@@ -609,7 +795,7 @@ class Loggable:
 
 
 class QTuneWindow(QWidget, Loggable):
-		def __init__(self, parent = None, main=None, params=None, devs=None):
+		def __init__(self, parent = None, main=None, params=None, devs=None, host=None, lpath=None, port=18812):
 			super().__init__()
 			#self.msparms = params
 			self.closed = False
@@ -617,7 +803,8 @@ class QTuneWindow(QWidget, Loggable):
 			self.spectrum = [None, None, None]
 			self.ledbox = QLedPanel()
 
-			self.runner = threadRunner(self, main, devs, None, params, None, None, tripleScanThread, self.showNewScan, self.showNewTune, logl=self.logl, forRun=False)
+			self.runner = threadRunner(self, main, devs, None, params, None, None, tripleScanThread, 
+				self.showNewScan, self.showNewTune, logl=self.logl, forRun=False, host=host, loadpath=lpath, port=port)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -913,7 +1100,7 @@ class QTuneWindow(QWidget, Loggable):
 				event.ignore()
 		
 		def showEvent(self, event):
-			print ("tuneWindow show")
+			#print ("tuneWindow show")
 			if self.closed:
 				self.runner.on_init()
 				self.closed = False
@@ -921,7 +1108,7 @@ class QTuneWindow(QWidget, Loggable):
 			event.accept()
 						
 class QSpectrumScan(QWidget, Loggable):
-		def __init__(self, parent = None, main=None, params=None, devs=None):
+		def __init__(self, parent = None, main=None, params=None, devs=None, host=None, lpath=None, port=18812):
 			super().__init__()
 			#self.msparms = params
 			#self.method = method
@@ -930,7 +1117,8 @@ class QSpectrumScan(QWidget, Loggable):
 			self.main = main
 			self.spectrum = None
 		
-			self.runner = threadRunner(self, main, devs, None, params, None, None, scanThread, self.showNewScan, None, logl=self.logl, forRun=False)
+			self.runner = threadRunner(self, main, devs, None, params, None, None, scanThread, 
+				self.showNewScan, None, logl=self.logl, forRun=False, host=host, loadpath=lpath, port=port)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
 			#
@@ -1106,7 +1294,7 @@ class QSpectrumScan(QWidget, Loggable):
 			else:
 				event.ignore()
 		def showEvent(self, event):
-			print ("ScanWindow show")
+			#print ("ScanWindow show")
 			if self.closed:
 				self.runner.on_init()
 				self.closed = False
@@ -1142,14 +1330,15 @@ class QLedPanel(QWidget):
 		self.leds[ledno].turn_off()
 
 class QInstControl(QWidget,Loggable):
-		def __init__(self, parent = None, main=None, method=None, methname ='', devs=None):
+		def __init__(self, parent = None, main=None, method=None, methname ='', devs=None, host=None, lpath=None, port=18812):
 			super().__init__(parent)
 			self.method = method
 			self.methname = methname
 			self.fname = ''
 			self.closed = False
 			self.main = main
-			self.runner = threadRunner(self, main, devs,  method, None, self.methname, self.fname, None, self.showNewScan, None, logl=self.logl, forRun=True)
+			self.runner = threadRunner(self, main, devs,  method, None, self.methname, self.fname, None, self.showNewScan, 
+																None, logl=self.logl, forRun=True, host=host, loadpath=lpath, port=port)
 
 			vboxscan = QVBoxLayout()
 			
@@ -1317,7 +1506,7 @@ class QInstControl(QWidget,Loggable):
 				event.ignore()
 		
 		def showEvent(self, event):
-			print ("InstWindow show")
+			#print ("InstWindow show")
 			if self.closed:
 				self.runner.on_init()
 				self.closed = False

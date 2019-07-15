@@ -34,7 +34,7 @@ class HP5971():
 		#self.statusb = self.br.statusb(self.dev)
 		self.esr = self.br.cmd(self.dev,  r'*SRE 0;:ERR:STR ON;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 	
 	def scanSeqInit(self, initial):
@@ -44,7 +44,7 @@ class HP5971():
 			icmd = ":RUN:STOP;RDY OFF;REM:APG:RDY OFF;MASK 255;*CLS;:RUN:STE 450;:MSC:RDY OFF;FLT:RVR 1;:CONFIG:MASS:EXT 0;:AEE 88;:BUF:CLR;:OCW:STR ON;CLR;*RST;:REP:DUR:FOR;:ERR:CLR;*ESR?"
 		self.esr = self.br.cmd(self.dev ,icmd )
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 	
 	def getErrors(self):
@@ -77,21 +77,21 @@ class HP5971():
 		#print ('Ready Off: ')
 		self.esr =  self.br.cmd(self.dev, r':MSC:RDY OFF;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def rvrOff(self):
 		#print ('Filter RVR Off: ')
 		self.esr = self.br.cmd(self.dev, r':MSC:FLT:RVR OFF;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def rvrOn(self):
 		#print ('Filter RVR Off: ')
 		self.esr = self.br.cmd(self.dev, r':MSC:FLT:RVR ON;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 				
 	def getFaultStat(self):
@@ -113,14 +113,14 @@ class HP5971():
 	def isPFTBAOn(self):
 		#print ('PFTBA: ')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return float(self.br.cmd(self.dev, r':MSC:PARM? CAL').decode('ascii', errors='replace').strip())
 
 	def vent(self):
 		#print ('Diff Off')
 		self.esr = self.br.cmd(self.dev, r':MSC:PARM DIF, 0;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def massParms(self, parms):
@@ -129,7 +129,7 @@ class HP5971():
 		self.logl("Mass: ", massParm)
 		self.esr =  self.br.cmd(self.dev,massParm)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		
 		return self.esr
 
@@ -138,7 +138,7 @@ class HP5971():
 		self.logl("Range: ",mra)
 		self.esr = self.br.cmd(self.dev, mra)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def tuningParms(self, parms, nxt):
@@ -151,20 +151,20 @@ class HP5971():
 		self.logl("Tune: ",t)
 		self.esr = self.br.cmd(self.dev, t)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def filtSetupStd(self):
 		#print ('Filter Setup: ')
 		self.esr = self.br.cmd(self.dev,':FLTR:MASS:CALC ISTD;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 	
 	def filtSetupStdCoeff(self, i):
 		self.esr = self.br.cmd(self.dev, ":FLTR:MASS:CALC ISTD;:FLTR:TIME:COEF %i;*ESR?" % i)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 	
 
@@ -172,14 +172,14 @@ class HP5971():
 		#print ('Qualifier Setup: ') 
 		self.esr = self.br.cmd(self.dev,':SCN:PEAK:QUAL MAXOF3;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def calValve(self,i):
 		#print ('Calibration Relay: ')
 		self.esr = self.br.cmd(self.dev,':MSC:PARM CAL,%i;*ESR?' % i)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def isReady(self):
@@ -190,14 +190,14 @@ class HP5971():
 		#print ('Ready On: ')
 		self.esr = self.br.cmd(self.dev,':MSC:RDY ON;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def clearBuf(self):
 		self.logl ('Clear Buffer: ')
 		self.esr = self.br.cmd(self.dev,':BUF:CLR;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 	
 	def simSetup(self, mass, dwell):
@@ -205,7 +205,7 @@ class HP5971():
 		self.logl("Simset: ", simset)
 		self.esr =  self.br.cmd(self.dev,simset)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def simAct(self):
@@ -213,7 +213,7 @@ class HP5971():
 		self.logl("Simact: ", act)
 		self.esr =  self.br.cmd(self.dev,act)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def simRamp(self, mass, dwell, parmnam, start, stop, step):
@@ -221,7 +221,7 @@ class HP5971():
 		self.logl("Simramp: ", sramp)
 		self.esr =  self.br.cmd(self.dev,sramp)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def scanSetup(self, parms, partial=False):
@@ -233,7 +233,7 @@ class HP5971():
 		self.logl("Scan: ", scan)
 		self.esr =  self.br.cmd(self.dev,scan)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 			
 		return self.esr
 	def getScanType(self):
@@ -246,19 +246,19 @@ class HP5971():
 		else:
 			self.esr = self.br.cmd(self.dev,':SCN:STRT;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 			
 	def clearLensTable(self):
 		self.esr = self.br.cmd(self.dev,':LENS:TBL:CLR;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def dataMode(self, n):
 		#print ('Data Mode: ')
 		self.esr= self.br.cmd(self.dev,':DAT:MODE:BRECP %i, 4086;*ESR?'% n)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 
 		return self.esr
 	
@@ -435,31 +435,31 @@ class HP5971():
 	def setRunDuration(self, t):
 		self.esr = self.br.cmd(self.dev, ":RUN:DUR %.6f;*ESR?" % t)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
 	def setSrcEs(self, es):
 		self.esr = self.br.cmd(self.dev, ":CONFIG:SRC:ES %i;*ESR?" % es)
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def runReady(self):
 		self.esr = self.br.cmd(self.dev ,":RUN:REM:APG ON;:RUN:RDY ON;*ESR?")
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def createRunTable(self, solventDelay):
 		self.esr = self.br.cmd(self.dev ,":RUN:TBL:CLR;DEF 0, #214:SCN:GRP:ACT 0;DEF %i, #211:MSC:RDY ON;DEF %i, #221:REP:PROG #18SCN:STRT;*ESR?" % (solventDelay, solventDelay))
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 			
 	def runTableOverride():
 		self.esr = self.br.cmd(self.dev ,":REP:PROG #18SCN:STRT;*ESR?")
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 
 	def override(self):
@@ -525,7 +525,7 @@ class HP5971():
 		self.logl ('Run Stop: ')
 		self.esr =  self.br.cmd(self.dev,':RUN:STOP;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 
 	def endRun(self, progress=None):
 		if progress is None:
@@ -541,7 +541,7 @@ class HP5971():
 	def runReadyOff(self):
 		self.esr =  self.br.cmd(self.dev,':RUN:REM:APG:RDY OFF;MASK 4;*ESR?')
 		if int(self.esr) != 0:
-			raise HP5971Exception('Bad status register: ' + str(self.esr))
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 
 	def faultmsgs(f):
 		fm = f & 16383
@@ -561,4 +561,6 @@ class HP5971():
 		return self.br.statusb(self.dev)
 		
 class HP5971Exception(Exception):
+	pass
+class HP5971StatusException(HP5971Exception):
 	pass

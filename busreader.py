@@ -12,11 +12,13 @@ class BusReader():
 		self.logl = logl
 		self.insts = {}
 		self.instidx = {}
-		self.getdevices(rsrcs=devs)
+		#self.con = rpyc.classic.connect("192.168.29.102")
+		#self.v = self.con.modules.visa
+		self.v = visa
 		self.stb = 0
 		self.last_stb = 0
+		self.getdevices(rsrcs=devs)
 
-		
 	def getGbpibAddr(dev):
 		#d = str(dev).split('::')
 		#a = d[1]
@@ -102,7 +104,8 @@ class BusReader():
 		return d
 
 	def getdevices(self, rsrcs=None):
-		self.rm = visa.ResourceManager()
+		#self.rm = visa.ResourceManager()
+		self.rm = self.v.ResourceManager()
 		if not rsrcs:
 			rsrcs = self.rm.list_resources()
 		self.insts = {}

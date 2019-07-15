@@ -14,9 +14,10 @@ import traceback
 import tuning
 import json
 import msfileread as msfr
+import rpyc
 
 class threadRunner():
-		def __init__(self,  parent, main, devs, method, msparms, methname, fname, scan_thread, showNewScan, showTuning, logl=print, forRun=False):
+		def __init__(self,  parent, main, devs, method, msparms, methname, fname, scan_thread, showNewScan, showTuning, logl=print, forRun=False, loadpath='', host='', port=18812):
 			self.progress_thread = QThread()
 			self.progress_thread_o = None
 			
@@ -47,7 +48,10 @@ class threadRunner():
 			self.devs = devs 
 			self.fname = fname
 			self.methname = methname
-		
+			self.loadpath = loadpath
+			self.rmthost = host
+			self.rmtport = port
+			
 		def disableAllButtons(self):
 			if self.parent.reinit_button:
 				self.parent.reinit_button.setEnabled(False)
@@ -106,7 +110,7 @@ class threadRunner():
 				
 				if not self.init_thread.isRunning():
 					#self.logl("No init Thread")
-					self.init_thread_o = initThread(self.method, self.logl, devs=self.devs, forRun=self.forRun)
+					self.init_thread_o = initThread(self.method, self.logl, devs=self.devs, forRun=self.forRun, path=self.loadpath, host=self.rmthost, port=self.rmtport)
 					self.init_thread_o.progress_update.connect(self.updateProgressBar)
 					self.init_thread_o.inst_status.connect(self.instStatus)
 					self.init_thread_o.init_status.connect(self.setInitialized)
@@ -337,10 +341,37 @@ class threadRunner():
 
 		def updateFname(self,fname):
 			self.fname = fname
-		def updateMethod(self, method):
+			if self.progress_thread_o:
+				self.progress_thread_o.updateFname(fname)
+				
+		def updateMethod(self, method, methname):
 			self.method = method
+			self.methname = methname
+			if self.progress_thread_o:
+				self.progress_thread_o.updateMethod( method, methname)
+			if self.init_thread_o:
+				self.init_thread_o.updateMethod( method, methname)
+
+	
+		def updateDevs(self, devs):
+			self.devs = devs
+			if self.init_thread_o:
+				self.init_thread_o.updateDevs(devs)
+
+		def updateConn(self, host, port, path):
+			self.loadpath = path
+			self.rmthost = host
+			self.rmtport = port
+			if self.init_thread_o:
+				self.init_thread_o.updateConn(host, port, path)
+
 		def updateMsParms(self, msparms):
 			self.msparms = msparms
+			if self.progress_thread_o:
+				self.progress_thread_o.updateParms(msparms)
+			if self.tune_thread_o:
+				self.tune_thread_o.updateParms(msparms)
+
 		def updateParent(self , parent):
 			self.parent = parent
 		def getMsParms():
@@ -370,7 +401,7 @@ class initThread(QObject):
 		update_init = pyqtSignal()
 		run_stop = pyqtSignal()
 
-		def __init__(self, method, logl, devs=None, forRun=False):
+		def __init__(self, method, logl, devs=None, forRun=False, host='', path='', port=18812):
 				QObject.__init__(self)
 				self.reboot = False
 				self.method = method
@@ -384,6 +415,9 @@ class initThread(QObject):
 				self.hpgc = None
 				self.hpinj = None
 				self.devs = devs
+				self.host = host
+				self.lpath = path
+				self.port = port
 				#self.run_init.connect(self.doInit)
 
 				
@@ -391,20 +425,45 @@ class initThread(QObject):
 				pass
 				#self.wait()
 				
-		def doUpdateMethod(m):
+		def updateMethod(self, m, methname):
 			self.method = m
 			self.init_gc = False
 			self.init_inj = False
 			self.init = False
-			self.doInit()
+			#self.doInit()
+		
+		def updateConn(self, host, port, path):
+			self.host = host
+			self.lpath = path
+			self.port = port
 			
+		def updateDevs(self, devs):
+			self.devs = devs
+
 		def doInit(self):
 			#init = False
 			time.sleep(2)
 			stime = 2.0
 			while not self.init:
+					if self.host and len(self.host) > 0:
+						try:
+							self.con = rpyc.classic.connect(self.host, self.port)
+							self.con._config['sync_request_timeout'] = 60 
+							self.rsysm = self.con.modules.sys
+							self.rosm = self.con.modules.os
+							if self.lpath not in self.rsysm.path:
+								self.rsysm.path.append(self.lpath)
+							self.rosm.chdir(self.lpath)
+							self.brm = self.con.modules.busreader
+						except Exception as e:
+							self.logl (e)
+							self.init_status.emit(False, 'Remote Connection Failed: ' +  str(e))
+							time.sleep(stime)
+							continue
+					else:
+						self.brm = busreader
 					try:
-						self.br = busreader.BusReader(devs=self.devs,logl=self.logl)
+						self.br = self.brm.BusReader(devs=self.devs,logl=self.logl)
 						self.progress_update.emit(10)
 					except Exception as e:
 						self.logl (e)
@@ -494,7 +553,6 @@ class statusThread(QObject):
 
 		progress_update = pyqtSignal(int)
 		run_status = pyqtSignal(bool)
-		update_status = pyqtSignal(hp5971.HP5971, hp5890.HP5890, hp7673.HP7673)
 		run_stop = pyqtSignal()
 
 		def __init__(self, hpmsd, hpgc, logl=print):
@@ -506,30 +564,38 @@ class statusThread(QObject):
 				pass
 				#self.wait()
 
-		def updateDevices(self, hpmsd, hpgc, hpinj):
+		def updateDevices(self, hpmsd, hpgc):
 				self.hpmsd = hpmsd
 				self.hpgc = hpgc
-				self.hpinj = hpinj
-					
-		def do_st(self,gc):
-					try:
-						ret = self.hpmsd.getConfig(self.progress_update.emit)
-						ret2 = self.hpmsd.getRunStat(self.progress_update.emit)
-						ret.update(ret2)
-						self.ms_status_update.emit(ret)
-						
-						if self.hpgc:
-							ret3 = self.hpgc.statcmds(self.progress_update.emit)
-							self.gc_status_update.emit(ret3)
-
-						self.progress_update.emit(100)
-
-					except Exception as e:
-						self.logl ('Exc ' + str(e))
-						self.logl(traceback.format_exc())
-
-						self.ms_status_update.emit({'Error' : str(e)})
+				#self.hpinj = hpinj
 		
+
+		def do_st(self,gc):
+			try:
+				ret = self.hpmsd.getConfig(self.progress_update.emit)
+				ret2 = self.hpmsd.getRunStat(self.progress_update.emit)
+				ret.update(ret2)
+				self.ms_status_update.emit(ret)
+						
+				if self.hpgc:
+					ret3 = self.hpgc.statcmds(self.progress_update.emit)
+					self.gc_status_update.emit(ret3)
+				self.progress_update.emit(100)
+
+			except hp5971.HP5971Exception as e1:
+				self.logl('5971 ' + str(e1))
+				try:
+					errstr = str(self.hpmsd.getErrors())
+					self.hpmsd.reset()
+				except Exception as e2:
+					errstr = str(e)
+				finally:
+					self.ms_status_update.emit({'Error' : errstr})
+			except Exception as e:
+				self.logl ('Exc ' + str(e))
+				self.logl(traceback.format_exc())
+				self.ms_status_update.emit({'Error' : str(e)})
+					
 		def doStop(self):
 			pass
 
@@ -553,7 +619,9 @@ class scanThread(QObject):
 
 		def updateDevices(self, hpmsd):
 				self.hpmsd = hpmsd
-			
+		
+		def updateParms(self, parms):
+			self.parms = parms	
 				
 		def __del__(self):
 				pass
@@ -561,25 +629,27 @@ class scanThread(QObject):
 
 
 		def doScan(self):
+			try:
+				#self.scan_status.emit(True, 'Starting Scan')
+				self.hpmsd.getAScan(self.parms, self.progress_update.emit)	
+				self.scan_done.emit([self.hpmsd.getSpec()], [''])
+				self.scan_status.emit(True, 'Complete')
+
+			except hp5971.HP5971Exception as e1:
+				self.logl('5971 ' + str(e1))
 				try:
-					#self.scan_status.emit(True, 'Starting Scan')
-					self.hpmsd.getAScan(self.parms, self.progress_update.emit)	
-					self.scan_done.emit([self.hpmsd.getSpec()], [''])
-					self.scan_status.emit(True, 'Complete')
+					errstr = str(self.hpmsd.getErrors())
+					self.hpmsd.reset()
 
-				except hp5971.HP5971Exception as e1:
-						self.logl('5971 ' + str(e1))
-						try:
-							 errstr = str(self.hpmsd.getErrors())
-						except Exception as e2:
-							 errstr = str(e)
-						finally:
-							 self.scan_status.emit(False, errstr)
-				except Exception as e:
-						self.logl ('Exc ' + str(e))
-						self.logl(traceback.format_exc())
+				except Exception as e2:
+					errstr = str(e)
+				finally:
+					self.scan_status.emit(False, errstr)
+			except Exception as e:
+				self.logl ('Exc ' + str(e))
+				self.logl(traceback.format_exc())
 
-						self.scan_status.emit(False, str(e))
+				self.scan_status.emit(False, str(e))
 		def doStop(self):
 			pass
 
@@ -601,8 +671,10 @@ class tripleScanThread(QObject):
 
 		def updateDevices(self, hpmsd):
 				self.hpmsd = hpmsd
-			
-				
+	
+		def updateParms(self, parms):
+			self.parms = parms	
+		
 		def __del__(self):
 				pass
 				#self.wait()
@@ -639,18 +711,19 @@ class tripleScanThread(QObject):
 					self.scan_status.emit(True, 'Complete')
 
 				except hp5971.HP5971Exception as e1:
-						self.logl ('5971 ' + str(e1))
-						try:
-							 errstr = str(self.hpmsd.getErrors())
-						except Exception as e2:
-							 errstr = str(e)
-						finally:
-							 self.scan_status.emit(False, errstr)
+					self.logl ('5971 ' + str(e1))
+					try:
+						errstr = str(self.hpmsd.getErrors())
+						self.hpmsd.reset()
+					except Exception as e2:
+						errstr = str(e)
+					finally:
+						self.scan_status.emit(False, errstr)
 				except Exception as e:
-						self.logl ('Exc ' + str(e))
-						self.logl(traceback.format_exc())
+					self.logl ('Exc ' + str(e))
+					self.logl(traceback.format_exc())
 
-						self.scan_status.emit(False, str(e))
+					self.scan_status.emit(False, str(e))
 
 		def doStop(self):
 			pass
@@ -675,7 +748,9 @@ class tuningThread(QObject):
 		def updateDevices(self, hpmsd):
 				self.hpmsd = hpmsd
 			
-				
+		def updateParms(self, parms):
+			self.parms = parms	
+		
 		def __del__(self):
 				pass
 				#self.wait()
@@ -720,18 +795,19 @@ class tuningThread(QObject):
 
 
 				except hp5971.HP5971Exception as e1:
-						self.logl ('5971 ' + str(e1))
-						try:
-							 errstr = str(self.hpmsd.getErrors())
-						except Exception as e2:
-							 errstr = str(e)
-						finally:
-							 self.tune_done.emit(False, errstr, {})
+					self.logl ('5971 ' + str(e1))
+					try:
+						errstr = str(self.hpmsd.getErrors())
+						self.hpmsd.reset()
+					except Exception as e2:
+						errstr = str(e)
+					finally:
+						self.tune_done.emit(False, errstr, {})
 				except Exception as e:
-						self.logl ('Exc ' + str(e))
-						self.logl(traceback.format_exc())
+					self.logl ('Exc ' + str(e))
+					self.logl(traceback.format_exc())
 
-						self.tune_done.emit(False, str(e), {})
+					self.tune_done.emit(False, str(e), {})
 
 		def doStop(self):
 			pass
@@ -784,10 +860,15 @@ class runProgressThread(QObject):
 				self.hpgc = hpgc
 				self.hpinj = hpinj
 				
-		def updateMethod(self, name, m):
+		def updateMethod(self, m, name):
 			self.method = m
 			self.methname = name
+		def updateFname(self, fname):
+			self.fname = fname
 
+		def updateParms(self, parms):
+			self.method['Method']['MSParms'] = parms	
+			
 		def datProc(self, m):
 				
 				self.hpmsd.readData()
@@ -1017,10 +1098,11 @@ class runProgressThread(QObject):
 						self.logl ('5971 ' + str(e1))
 						self.logl(traceback.format_exc())
 						try:
-							 errstr = str(self.hpmsd.getErrors())
+							errstr = str(self.hpmsd.getErrors())
+							self.hpmsd.reset()
 						except Exception as e2:
-							 errstr = "Could not get Error: " + str(e2)
-							 self.logl ('5971 er2 ' + str(e2))
+							errstr = "Could not get Error: " + str(e2)
+							self.logl ('5971 er2 ' + str(e2))
 						finally:
 							self.logl ('5971 error ' + errstr)
 							self.run_done.emit(False, errstr)
