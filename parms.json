@@ -1,8 +1,8 @@
 {
     "Run": {
         "SolventDelay": {
-            "type": "i",
             "value": 180,
+            "type": "i",
             "range": [
                 0,
                 3600
@@ -11,8 +11,8 @@
     },
     "Mass": {
         "MassGain": {
+            "value": -194.0,
             "type": "i",
-            "value": -180,
             "range": [
                 -4000,
                 4000
@@ -21,8 +21,8 @@
             "ftype": "h"
         },
         "MassOffs": {
+            "value": -5.0,
             "type": "i",
-            "value": -5,
             "range": [
                 -99,
                 99
@@ -33,8 +33,8 @@
     },
     "Tuning": {
         "EMVolts": {
+            "value": 1729.414117647059,
             "type": "f",
-            "value": 1635.294117647059,
             "range": [
                 0,
                 3000
@@ -44,8 +44,8 @@
             "ftype": "d"
         },
         "AmuGain": {
+            "value": 552,
             "type": "f",
-            "value": 552.0,
             "range": [
                 0,
                 1023
@@ -55,8 +55,8 @@
             "ftype": "d"
         },
         "EntLens": {
+            "value": 46.84967320261432,
             "type": "f",
-            "value": 24.596078431372547,
             "range": [
                 0.0,
                 128.0
@@ -66,8 +66,8 @@
             "ftype": "d"
         },
         "Wid219": {
-            "type": "f",
             "value": -0.002941176470588225,
+            "type": "f",
             "range": [
                 -0.15,
                 0.15
@@ -77,8 +77,8 @@
             "ftype": "d"
         },
         "TTI": {
+            "value": 0,
             "type": "i",
-            "value": 0.0,
             "range": [
                 0,
                 1
@@ -87,8 +87,8 @@
             "ftype": "d"
         },
         "Xray": {
+            "value": 27.075,
             "type": "f",
-            "value": 21.375,
             "range": [
                 0.0,
                 218.0
@@ -98,8 +98,8 @@
             "ftype": "d"
         },
         "Filament": {
+            "value": 1,
             "type": "i",
-            "value": 1.0,
             "range": [
                 1,
                 2
@@ -108,8 +108,8 @@
             "ftype": "d"
         },
         "Emission": {
+            "value": 1,
             "type": "i",
-            "value": 1.0,
             "range": [
                 0,
                 1
@@ -118,8 +118,8 @@
             "ftype": "d"
         },
         "PFTBA": {
-            "type": "i",
             "value": 1,
+            "type": "i",
             "range": [
                 0,
                 1
@@ -128,8 +128,8 @@
             "ftype": "b"
         },
         "EntOffs": {
+            "value": 6.358666666666665,
             "type": "f",
-            "value": 9.537254901960782,
             "range": [
                 0.0,
                 64.0
@@ -139,8 +139,8 @@
             "ftype": "d"
         },
         "DC Pol": {
+            "value": 1,
             "type": "i",
-            "value": 1.0,
             "range": [
                 0,
                 1
@@ -149,8 +149,8 @@
             "ftype": "d"
         },
         "Repeller": {
+            "value": 14.593647058823528,
             "type": "f",
-            "value": 14.985882352941179,
             "range": [
                 0.0,
                 19.8
@@ -160,8 +160,8 @@
             "ftype": "d"
         },
         "AmuOffs": {
+            "value": 77,
             "type": "f",
-            "value": 77.0,
             "range": [
                 0,
                 255
@@ -171,8 +171,8 @@
             "ftype": "d"
         },
         "IonFocus": {
+            "value": 30.333333333333332,
             "type": "f",
-            "value": 36.0,
             "range": [
                 0.0,
                 127.5
@@ -183,8 +183,8 @@
         },
         "Compound": {
             "Peak1": {
-                "type": "f",
                 "value": 69.0,
+                "type": "f",
                 "range": [
                     0.0,
                     650.0
@@ -194,8 +194,8 @@
                 "ftype": "d"
             },
             "Peak2": {
-                "type": "f",
                 "value": 219.0,
+                "type": "f",
                 "range": [
                     0.0,
                     650.0
@@ -205,8 +205,8 @@
                 "ftype": "d"
             },
             "Peak3": {
-                "type": "f",
                 "value": 502.0,
+                "type": "f",
                 "range": [
                     0.0,
                     650.0
@@ -219,8 +219,8 @@
         "Ramp": {
             "Repeller": {
                 "Start": {
-                    "type": "f",
                     "value": 7.99764705882353,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -230,8 +230,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 19.8,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -241,8 +241,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 0.388,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -254,8 +254,8 @@
             },
             "IonFocus": {
                 "Start": {
-                    "type": "f",
                     "value": 10.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -265,8 +265,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 65.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -276,8 +276,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 1.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -289,8 +289,8 @@
             },
             "EntLens": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -300,8 +300,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 128.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -311,8 +311,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 1.003921568627451,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -322,10 +322,10 @@
                     "ftype": "d"
                 }
             },
-            "EntOfs": {
+            "EntOffs": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -335,8 +335,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 64.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -346,8 +346,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 1.004,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -359,8 +359,8 @@
             },
             "Xray": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -370,8 +370,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 218.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -381,8 +381,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 4.275,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -394,8 +394,8 @@
             },
             "AmuGain": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -405,8 +405,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 1023.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -416,8 +416,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 8.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -427,10 +427,10 @@
                     "ftype": "d"
                 }
             },
-            "AmuOfs": {
+            "AmuOffs": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -440,8 +440,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 255.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -451,8 +451,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 1.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -464,8 +464,8 @@
             },
             "EMVolts": {
                 "Start": {
-                    "type": "f",
                     "value": 0.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -475,8 +475,8 @@
                     "ftype": "d"
                 },
                 "Stop": {
-                    "type": "f",
                     "value": 3000.0,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -486,8 +486,8 @@
                     "ftype": "d"
                 },
                 "Step": {
-                    "type": "f",
                     "value": 47.06,
+                    "type": "f",
                     "range": [
                         0.0,
                         3000.0
@@ -501,8 +501,8 @@
     },
     "Scan": {
         "RangeTo": {
-            "type": "f",
             "value": 425.0,
+            "type": "f",
             "range": [
                 1.2,
                 650.0
@@ -512,8 +512,8 @@
             "ftype": "d"
         },
         "RangeFrom": {
-            "type": "f",
             "value": 10.0,
+            "type": "f",
             "range": [
                 1.2,
                 650.0
@@ -523,8 +523,8 @@
             "ftype": "d"
         },
         "Samples": {
-            "type": "i",
             "value": 4,
+            "type": "i",
             "range": [
                 0,
                 128
@@ -533,8 +533,8 @@
             "ftype": "h"
         },
         "Avg": {
-            "type": "i",
             "value": 1,
+            "type": "i",
             "range": [
                 0,
                 128
@@ -543,8 +543,8 @@
             "ftype": "h"
         },
         "Step": {
-            "type": "f",
             "value": 0.1,
+            "type": "f",
             "range": [
                 0.05,
                 5.0
@@ -554,8 +554,8 @@
             "ftype": "d"
         },
         "Threshold": {
-            "type": "i",
             "value": 150,
+            "type": "i",
             "range": [
                 0,
                 9999
@@ -564,8 +564,8 @@
             "ftype": "h"
         },
         "EDT": {
-            "type": "i",
             "value": 0,
+            "type": "i",
             "range": [
                 0,
                 1
