@@ -30,7 +30,7 @@ from gui.qdictparms import QParamArea, QStatusArea
 from gui.qdictionarytree import DictionaryTreeWidget
 from device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
-class AppForm(QMainWindow):
+class MainWindow(QMainWindow):
 		MaxRecentFiles = 5
 		logline = pyqtSignal(str)
 
@@ -92,9 +92,9 @@ class AppForm(QMainWindow):
 			board = self.dsettings.getSetting("Board")
 			#print (self.dsettings.getSetting("AutoDetect"))
 			enbl = self.dsettings.getSetting("AutoDetect")
-			devs = [ AppForm.buildDev(board, self.dsettings.getSetting("5971")),
-				AppForm.buildDev(board, self.dsettings.getSetting("5890")), 
-				AppForm.buildDev(board, self.dsettings.getSetting("7673")) ]
+			devs = [ MainWindow.buildDev(board, self.dsettings.getSetting("5971")),
+				MainWindow.buildDev(board, self.dsettings.getSetting("5890")), 
+				MainWindow.buildDev(board, self.dsettings.getSetting("7673")) ]
 			if enbl:
 				self.devs = None
 			else:
@@ -241,7 +241,7 @@ class AppForm(QMainWindow):
 			self.method_modified = False
 
 			self.methpath = path
-			self.methname = AppForm.strippedName(self.methpath)
+			self.methname = MainWindow.strippedName(self.methpath)
 			self.upd_parms()
 			
 			self.setCurrentFile(path)
@@ -309,14 +309,14 @@ class AppForm(QMainWindow):
 				##print(self.devs)
 		def tune_window(self):
 			if not self.tuningWindow:
-				AppForm.count = AppForm.count+1
+				MainWindow.count = MainWindow.count+1
 				sub = QMdiSubWindow()
 				self.setDevs()
 				self.setConn()
 				submain = QTuneWindow(sub, self, params=self.msparms, devs=self.devs, 
 					host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 				sub.setWidget(submain)
-				sub.setWindowTitle(str(AppForm.count) + ": " + "Tuning")
+				sub.setWindowTitle(str(MainWindow.count) + ": " + "Tuning")
 				self.mdi.addSubWindow(sub)
 				sub.show()
 				self.tuningWindow = submain
@@ -330,7 +330,7 @@ class AppForm(QMainWindow):
 				self.inst_mdi.close()
 		def scan_window(self):
 			if not self.scanWindow:
-				AppForm.count = AppForm.count+1
+				MainWindow.count = MainWindow.count+1
 				sub = QMdiSubWindow()
 				self.setDevs()
 				self.setConn()
@@ -338,7 +338,7 @@ class AppForm(QMainWindow):
 				submain = QSpectrumScan(sub, self, params=self.msparms, devs=self.devs, 
 						host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 				sub.setWidget(submain)
-				sub.setWindowTitle(str(AppForm.count) + ": " + "Scan Control")
+				sub.setWindowTitle(str(MainWindow.count) + ": " + "Scan Control")
 				self.mdi.addSubWindow(sub)
 				sub.show()
 				self.scanWindow = submain
@@ -370,11 +370,11 @@ class AppForm(QMainWindow):
 			else:
 				path = self.methpath
 				meth = self.method['Method']
-				AppForm.count = AppForm.count+1
+				MainWindow.count = MainWindow.count+1
 				sub = QMdiSubWindow()
 				#submain = QScrollArea()
 				#sub.setWidget(submain)
-				sub.setWindowTitle(str(AppForm.count) + ": Method : " + AppForm.strippedName(path))
+				sub.setWindowTitle(str(MainWindow.count) + ": Method : " + MainWindow.strippedName(path))
 				self.tree = DictionaryTreeWidget(meth)
 				self.tree.getModel().dataChanged.connect(self.treeUpdated)
 				sub.setWidget(self.tree)
@@ -408,11 +408,11 @@ class AppForm(QMainWindow):
 
 		def log_window(self, q):
 			if not self.logWindow:
-				AppForm.count = AppForm.count+1
+				MainWindow.count = MainWindow.count+1
 				self.logText = QPlainTextEdit()
 				sub = QMdiSubWindow()
 				sub.setWidget(self.logText)
-				sub.setWindowTitle("Log: "+str(AppForm.count))
+				sub.setWindowTitle("Log: "+str(MainWindow.count))
 				self.mdi.addSubWindow(sub)
 				sub.show()	
 				self.logWindow = self.logText
@@ -440,14 +440,14 @@ class AppForm(QMainWindow):
 				self.statusBar().showMessage('Error: No Method Loaded', 10000)
 			else:
 				if not self.instWindow:
-					AppForm.count = AppForm.count+1
+					MainWindow.count = MainWindow.count+1
 					sub = QMdiSubWindow()
 					self.setDevs()
 					self.setConn()
 					self.instrument = QInstControl(sub, self, self.method, self.methname, 
 							devs=self.devs, host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 					sub.setWidget(self.instrument)
-					sub.setWindowTitle("Instrument: "+str(AppForm.count))
+					sub.setWindowTitle("Instrument: "+str(MainWindow.count))
 					self.mdi.addSubWindow(sub)
 					sub.show()	
 					self.instWindow = self.instrument
@@ -501,12 +501,12 @@ class AppForm(QMainWindow):
 						pass
 
 				files.insert(0, fileName)
-				del files[AppForm.MaxRecentFiles:]
+				del files[MainWindow.MaxRecentFiles:]
 
 				settings.setValue('recentFileList', files)
 
 				for widget in QApplication.topLevelWidgets():
-						if isinstance(widget, AppForm):
+						if isinstance(widget, MainWindow):
 								widget.updateRecentFileActions()
 		
 		def updateRecentFileActions(self):
@@ -516,21 +516,21 @@ class AppForm(QMainWindow):
 					l = len(files)
 				else:
 					l = 0
-				numRecentFiles = min(l, AppForm.MaxRecentFiles)
+				numRecentFiles = min(l, MainWindow.MaxRecentFiles)
 
 				for i in range(numRecentFiles):
-						text = "&%d %s" % (i + 1, AppForm.strippedName(files[i]))
+						text = "&%d %s" % (i + 1, MainWindow.strippedName(files[i]))
 						self.recentFileActs[i].setText(text)
 						self.recentFileActs[i].setData(files[i])
 						self.recentFileActs[i].setVisible(True)
 
-				for j in range(numRecentFiles, AppForm.MaxRecentFiles):
+				for j in range(numRecentFiles, MainWindow.MaxRecentFiles):
 						self.recentFileActs[j].setVisible(False)
 
 				self.separatorAct.setVisible((numRecentFiles > 0))
 				
 		def create_recent_files(self):
-			for i in range(AppForm.MaxRecentFiles):
+			for i in range(MainWindow.MaxRecentFiles):
 				self.recentFileActs.append(
 					QAction(self, visible=False,
 					triggered=self.recentfileaction))
@@ -573,7 +573,7 @@ class AppForm(QMainWindow):
 				self.separatorAct = self.file_menu.addSeparator() 
 				self.separatorAct.setVisible(False)
 				
-				for i in range(AppForm.MaxRecentFiles):
+				for i in range(MainWindow.MaxRecentFiles):
 					self.file_menu.addAction(self.recentFileActs[i])
 				
 				self.window_menu = self.menuBar().addMenu("&Window")
@@ -1513,7 +1513,7 @@ class QInstControl(QWidget,Loggable):
 		
 def main():
 	app = QApplication(sys.argv)
-	form = AppForm()
+	form = MainWindow()
 	form.show()
 	app.exec_()
 
