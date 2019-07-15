@@ -17,7 +17,7 @@ import json
 
 import msfile.msfileread as msfr
 from pyqt_led import Led
-import tune2meth
+import msfile.tune2meth as tune2meth
 import msfile.readspec as readspec
 
 import calc.putil as putil
