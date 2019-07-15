@@ -6,9 +6,9 @@ import sys
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import readspec
-import busreader
-import hp5971
+import pygcms.msfile.readspec as readspec
+import pygcms.device.busreader as busreader
+import pygcms.device.hp5971 as hp5971
 import tuning
 import time
 

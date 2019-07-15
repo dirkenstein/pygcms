@@ -1,9 +1,9 @@
-import readspec
+import pygcms.msfile.readspec as readspec
 import pandas
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import msfileread as msfr
+import pygcms.msfile.msfileread as msfr
 import datetime
 
 def test():

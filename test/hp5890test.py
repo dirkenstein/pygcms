@@ -1,4 +1,4 @@
-import hp5890
+import pygcms.device.hp5890
 import hp5890parms
 import expandkeys
 import json

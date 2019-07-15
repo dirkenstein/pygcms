@@ -6,14 +6,14 @@ import sys
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import readspec
-import busreader
-import hp5971
-import hp7673
-import hp5890
+import pygcms.msfile.readspec as readspec
+import pygcms.device.busreader as busreader
+import pygcms.device.hp5971 as hp5971
+import pygcms.device.hp7673 as hp7673
+import pygcms.device.hp5890 as hp5890
 import time
 import datetime
-import msfileread as msfr
+import pygcms.msfile.msfileread as msfr
 import argparse 
 
 method = sys.argv[1]
