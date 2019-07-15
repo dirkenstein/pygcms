@@ -15,20 +15,20 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.figure import Figure
 import json
 
-import msfile.msfileread as msfr
+import pygcms.msfile.msfileread as msfr
 from pyqt_led import Led
-import msfile.tune2meth as tune2meth
-import msfile.readspec as readspec
+import pygcms.msfile.tune2meth as tune2meth
+import pygcms.msfile.readspec as readspec
 
-import calc.putil as putil
+import pygcms.calc.putil as putil
 import numpy as np
 import pandas
 import scipy
 import scipy.interpolate
 
-from gui.qdictparms import QParamArea, QStatusArea
-from gui.qdictionarytree import DictionaryTreeWidget
-from device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
+from pygcms.gui.qdictparms import QParamArea, QStatusArea
+from pygcms.gui.qdictionarytree import DictionaryTreeWidget
+from pygcms.device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
 class MainWindow(QMainWindow):
 		MaxRecentFiles = 5

@@ -1,5 +1,5 @@
 import struct	
-import msfile.readspec as readspec
+import pygcms.msfile.readspec as readspec
 import pandas
 import numpy as	np
 import matplotlib
@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import peakutils
 import scipy
 import sys
-import calc.putil as putil
+import pygcms.calc.putil as putil
 
 class ReadMSFile():
 	hdr	=	">4p20p62p62p30p30p10p10p20pihhhhiiiihiiiii"

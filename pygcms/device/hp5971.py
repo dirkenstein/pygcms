@@ -1,5 +1,5 @@
-import device.busreader as busreader
-import msfile.readspec as readspec
+import pygcms.device.busreader as busreader
+import pygcms.msfile.readspec as readspec
 
 class HP5971():
 	faults = {

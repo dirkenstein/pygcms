@@ -1,10 +1,10 @@
-import device.hp5971 as hp5971
+import pygcms.device.hp5971 as hp5971
 import copy
 import numpy as np
 import scipy
 import pandas 
 import math
-import calc.putil as putil
+import pygcms.calc.putil as putil
 
 class HP5971Tuning():
 	def __init__(self, msd, parms, emitScan, emitAxis, emitRamp, logl=print):

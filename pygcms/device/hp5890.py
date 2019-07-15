@@ -1,4 +1,4 @@
-import device.busreader as busreader
+import pygcms.device.busreader as busreader
 import struct 
 
 class HP5890():

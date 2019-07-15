@@ -1,4 +1,4 @@
-import msfileread
+import pygcms.msfile.msfileread as msfileread
 import sys
 
 rs = msfileread.ReadMSFile(sys.argv[1])

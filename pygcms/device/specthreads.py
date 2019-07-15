@@ -1,18 +1,18 @@
 
 from PyQt5.QtCore import *
-import msfile.readspec as readspec
-import device.busreader as busreader
+import pygcms.msfile.readspec as readspec
+import pygcms.device.busreader as busreader
 import visa
-import device.hp5971 as hp5971
-import device.hp7673 as hp7673
-import device.hp5890 as hp5890
+import pygcms.device.hp5971 as hp5971
+import pygcms.device.hp7673 as hp7673
+import pygcms.device.hp5890 as hp5890
 import copy
 import time
 import datetime
 import traceback
-import device.tuning as tuning
+import pygcms.device.tuning as tuning
 import json
-import msfile.msfileread as msfr
+import pygcms.msfile.msfileread as msfr
 import rpyc
 
 class threadRunner():

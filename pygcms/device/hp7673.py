@@ -1,4 +1,4 @@
-import device.busreader as busreader
+import pygcms.device.busreader as busreader
 import time
 class HP7673():
 	def __init__(self, dev, br, inj, gcaddr, logl=print):

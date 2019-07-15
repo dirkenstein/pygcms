@@ -1,6 +1,6 @@
 import pandas
 import numpy as	np
-import calc.peakdetect as peakdetect
+import pygcms.calc.peakdetect as peakdetect
 
 class PUtil():
 	def nearest(fr, column, value):

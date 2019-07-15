@@ -3,7 +3,7 @@ import sys
 import json
 
 from PyQt5 import QtGui, QtCore, QtWidgets
-from gui.node import Node
+from pygcms.gui.node import Node
 
 
 class DictionaryTreeModel(QtCore.QAbstractItemModel):

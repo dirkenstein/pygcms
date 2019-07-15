@@ -7,7 +7,7 @@ import pandas
 import scipy.signal
 #import crc16
 import sys
-import calc.putil as putil
+import pygcms.calc.putil as putil
 
 class ReadSpec():
 	fig, ax = plt.subplots()
