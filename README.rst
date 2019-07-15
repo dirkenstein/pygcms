@@ -11,7 +11,7 @@ obsolete GPIB interface (HP82341)
 You can install G1701BA on Win10 but it needs customising as it will not 
 run 5971 or 5972 MSDs 
 
-This software is behginning to addrss that gap
+This software is beginning to address that gap
 
 Known to work on Mac, Linux and Windows 
 
@@ -46,13 +46,14 @@ TODO
 Sequence support 
 Logbook
 
-Full Manual tuning 
-Reimplement full 5971 autotune
+Full manual tuning 
+
+Reimplement full 5971 Autotune
 
 Command line versions of applications
 
-Better GC paramter setting
+Better GC parameter setting
 
 Reporting support
 
-Ability to run Chemstation Macro files
+Ability to run Chemstation macro files
