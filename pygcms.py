@@ -1,19 +1,8 @@
 """
-This demo demonstrates how to embed a matplotlib (mpl) plot 
-into a PyQt4 GUI application, including:
-
-* Using the navigation toolbar
-* Adding data to the plot
-* Dynamically modifying the plot's properties
-* Processing mpl events
-* Saving the plot to a file from a menu
-
-The main goal is to serve as a basis for developing rich PyQt GUI
-applications featuring mpl plots (using the mpl OO API).
-
-Eli Bendersky (eliben@gmail.com)
-License: this code is in the public domain
-Last modified: 19.01.2009
+PyQt5 GUI appliaction for contorlling an HP 5890/5971 GC/MS system
+Dirk Niggemann <dirk.niggemann@gmail.com>
+License: MIT
+Last modified: 16.07.2019
 """
 import sys, os, random
 from PyQt5.QtCore import *
@@ -26,20 +15,20 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.figure import Figure
 import json
 
-import msfileread as msfr
+import msfile.msfileread as msfr
 from pyqt_led import Led
 import tune2meth
-import readspec
+import msfile.readspec as readspec
 
-import putil
+import calc.putil as putil
 import numpy as np
 import pandas
 import scipy
 import scipy.interpolate
 
-from qdictparms import QParamArea, QStatusArea
-from qdictionarytree import DictionaryTreeWidget
-from specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
+from gui.qdictparms import QParamArea, QStatusArea
+from gui.qdictionarytree import DictionaryTreeWidget
+from device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
 class AppForm(QMainWindow):
 		MaxRecentFiles = 5
@@ -290,7 +279,7 @@ class AppForm(QMainWindow):
 		
 		def on_about(self):
 				msg = """ 
- *          PySpec 0.1			
+ *          PyGCMS 0.2			
  *HP 5890/ 5971 GC/MS control program:
  *Pretty much implements all the features 
  *In the Diagnostics/Vacuum Control Screen
@@ -299,7 +288,7 @@ class AppForm(QMainWindow):
  *can also control a 5890 and 7673 autosampler
  *  (C) 2019 Dirk Niggemann
 """
-				QMessageBox.about(self, "About PySpec", msg.strip())
+				QMessageBox.about(self, "About PyGCMS", msg.strip())
 	
 	
 		def loadparam(self):
@@ -484,7 +473,7 @@ class AppForm(QMainWindow):
 				self.setCentralWidget(self.mdi)
 
 		def create_status_bar(self):
-				self.status_text = QLabel("PySpec 0.1")
+				self.status_text = QLabel("PyGCMS 0.2")
 				self.progress = QProgressBar(self)
 				#self.progress.setGeometry(, 80, 250, 20)
 				self.statusBar().addWidget(self.status_text, 1)
@@ -689,7 +678,7 @@ class QKeySettings(QWidget):
 		def __init__(self, key, default, intrange, applyer=None, parent = None, *args):
 			super().__init__(parent, *args)
 			self.key = key
-			self.settings = QSettings('Muppetastic', 'PySpec')
+			self.settings = QSettings('Muppetastic', 'PyGCMS')
 			self.applyer = applyer
 			val = self.settings.value(key)
 			#val = None

@@ -8,14 +8,14 @@ import re
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-import msfileread as mr
-import readspec
+import msfile.msfileread as mr
+import msfile.readspec as readspec
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-import putil
+import calc.putil as putil
 import peakutils
 import numpy as np
 import pandas
