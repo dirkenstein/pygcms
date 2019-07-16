@@ -450,10 +450,10 @@ class initThread(QObject):
 							self.con._config['sync_request_timeout'] = 60 
 							self.rsysm = self.con.modules.sys
 							self.rosm = self.con.modules.os
-							if self.lpath not in self.rsysm.path:
+							if len(self.lpath) > 0 and self.lpath not in self.rsysm.path:
 								self.rsysm.path.append(self.lpath)
-							self.rosm.chdir(self.lpath)
-							self.brm = self.con.modules.busreader
+								self.rosm.chdir(self.lpath)
+							self.brm = self.con.modules['pygcms.device.busreader']
 						except Exception as e:
 							self.logl (e)
 							self.init_status.emit(False, 'Remote Connection Failed: ' +  str(e))
