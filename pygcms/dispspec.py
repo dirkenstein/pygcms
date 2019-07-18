@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
 			print ("triggered: ", q)
 
 			if q.text() == "Load":
-				file_choices = "MS (*.ms);;All Files (*)"
+				file_choices = "MS Files (*.ms);;All Files (*)"
 				
 				path, choices = QFileDialog.getOpenFileName(self, 
 												'Load file', '', 
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
 				if path:
 					self.loadMSFile(path)
 			if q.text() == "Save MSP":
-				file_choices = "MSP (*.msp)"
+				file_choices = "MSP Files (*.msp)"
 				
 				path, choice = QFileDialog.getSaveFileName(self, 
 											'Save file', '', 
@@ -151,7 +151,7 @@ class MainWindow(QMainWindow):
 				if path:
 					self.saveMSPFile(path)
 			if q.text() == "Save Raw":
-				file_choices = "Raw (*.bin)"
+				file_choices = "Raw Files (*.bin)"
 				
 				path, choice = QFileDialog.getSaveFileName(self, 
 											'Save file', '', 
@@ -291,49 +291,68 @@ class MainWindow(QMainWindow):
 			return win
 	def saveMSPFile(self, path):
 					act = self.activeMdiChild()
-					if isinstance(act, QSpectrumArea):
-						f = open(path, "w");
-						act.spectrum.saveMsp(f, act.rt, "UNK-1")
-						f.close()
-					else:
-						win = self.getActiveTicArea()
-						if win is not None and win.maxima is not None:
+					try:
+						if isinstance(act, QSpectrumArea):
 							f = open(path, "w");
-							sel = True
-							for idx, m in win.maxima['retention_time'].iteritems():
-								if win.peakw is not None:
-									sel = win.peakw.table_model.isSelected(idx)
-								else:
-									sel, mkr, fil = win.sels[idx]
-								if sel:
-									win.runfile.setUseNew(win.subtract_cb.isChecked())
-									tic = win.runfile.nearest_tic(m)                    
-									s = win.runfile.getSpectra()
-									rt, spectrum=s[tic.index[0]]
-									spectrum.saveMsp(f, rt, "UNK-%i" % idx)
+							act.spectrum.saveMsp(f, act.rt, "UNK-1")
 							f.close()
+						else:
+							win = self.getActiveTicArea()
+							if win is not None and win.maxima is not None:
+								f = open(path, "w");
+								anysel = False
+								for idx, m in win.maxima['retention_time'].iteritems():
+									if win.peakw is not None:
+										sel = win.peakw.table_model.isSelected(idx)
+									else:
+										sel, mkr, fil = win.sels[idx]
+									if sel:
+										win.runfile.setUseNew(win.subtract_cb.isChecked())
+										tic = win.runfile.nearest_tic(m)                    
+										s = win.runfile.getSpectra()
+										rt, spectrum=s[tic.index[0]]
+										spectrum.saveMsp(f, rt, "UNK-%i" % idx)
+										anysel = True
+								f.close()
+								if not anysel:
+									os.remove(path)
+									self.statusBar().showMessage('No maxima selected...', 4000)
+							else:
+								self.statusBar().showMessage('No maxima to save...', 4000)
+					except Exception as e:
+						self.statusBar().showMessage('Unable to save: ' +  str(e), 4000)
+
 	def saveRawFile(self, path):
 					act = self.activeMdiChild()
-					if isinstance(act, QSpectrumArea):
-						f = open(path, "wb");
-						act.spectrum.saveRaw(f)
-						f.close					
+					try:
+						if isinstance(act, QSpectrumArea):
+							f = open(path, "wb");
+							act.spectrum.saveRaw(f)
+							f.close()
+						else:
+							self.statusBar().showMessage('No spectrum selected... ', 4000)
+					except Exception as e:
+						self.statusBar().showMessage('Unable to save: ' + str(e), 4000)
+			
 	def loadMSFile(self, path):
 				#self.canvas.print_figure(path, dpi=self.dpi)
-				theRun = mr.ReadMSFile(path)
-				self.statusBar().showMessage('Loaded %s' % path, 2000)
-				#self.on_draw()
-				MainWindow.count = MainWindow.count+1
-				sub = QMdiSubWindow()
-				submain = QTICArea(sub, self)
-				submain.setFile(theRun)
-				submain.setPath(path)
-				sub.setWidget(submain)
-				sub.setWindowTitle(str(MainWindow.count) + ": " + self.strippedName(path))
-				self.mdi.addSubWindow(sub)
-				sub.show()
-				self.setCurrentFile(path)
-				
+				try:
+					theRun = mr.ReadMSFile(path)
+					self.statusBar().showMessage('Loaded %s' % path, 2000)
+					#self.on_draw()
+					MainWindow.count = MainWindow.count+1
+					sub = QMdiSubWindow()
+					submain = QTICArea(sub, self)
+					submain.setFile(theRun)
+					submain.setPath(path)
+					sub.setWidget(submain)
+					sub.setWindowTitle(str(MainWindow.count) + ": " + self.strippedName(path))
+					self.mdi.addSubWindow(sub)
+					sub.show()
+					self.setCurrentFile(path)
+				except Exception as e:
+					self.statusBar().showMessage('Unable to load: ' + str(e), 4000)
+			
 	def activeMdiChild(self):
 				activeSubWindow = self.mdi.activeSubWindow()
 				if activeSubWindow:

@@ -360,8 +360,12 @@ class ReadSpec():
 			f.write("%.1f %i;\n" % (s['m/z'], s['abundance']))
 		f.write("\n")
 	
-	def saveRaw(self, f):
-		f.write(self.b)
+	def saveRaw(self, f, full=False):
+		if full:
+			f.write(self.b)
+		else:
+			sb = self.b[self.hhlen:self.flen+self.hhlen]
+			f.write(sb)
 		
 	def getTotIons(self, n=0):
 		if "TotalIon" in self.spectrum[n]:
