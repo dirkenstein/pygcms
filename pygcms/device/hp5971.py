@@ -254,9 +254,9 @@ class HP5971():
 			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
 		
-	def dataMode(self, n):
+	def dataMode(self, n, bufsz=4086):
 		#print ('Data Mode: ')
-		self.esr= self.br.cmd(self.dev,':DAT:MODE:BRECP %i, 4086;*ESR?'% n)
+		self.esr= self.br.cmd(self.dev,':DAT:MODE:BRECP %i, %i;*ESR?'% (n, bufsz))
 		if int(self.esr) != 0:
 			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 
@@ -455,7 +455,22 @@ class HP5971():
 		if int(self.esr) != 0:
 			raise HP5971StatusException('Bad status register: ' + str(self.esr))
 		return self.esr
-			
+
+	#':SIM:GRP:EDT 0;:SIM:WIDE 1;IONS:CLR;DEF 29.0000,0.100,45.0000,0.100;*ESR?'
+	#':SIM:GRP:EDT 1;:SIM:WIDE 0;IONS:CLR;DEF 31.0000,0.100,43.0000,0.100,61.0000,0.100;*ESR?'
+	def createSIMTable(self, idx, wide, ions, dwells):
+		self.esr = self.br.cmd(self.dev ,":SIM:GRP:EDT %i;:SIM:WIDE %i;IONS:CLR;DEF %s;*ESR?"
+				% (idx, wide,  ','.join( str(w)+','+ str(t) for w,t in zip(ions, dwells))))
+		if int(self.esr) != 0:
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
+		return self.esr
+
+	def createRunTableSIM(self, solventDelay, secondDelay):
+		self.esr = self.br.cmd(self.dev ,":RUN:TBL:CLR;DEF 0, #214:SIM:GRP:ACT 0;DEF %i, #214:SIM:GRP:ACT 1;DEF %i, #211:MSC:RDY ON;DEF %i, #221:REP:PROG #18SIM:STRT;*ESR?" % (secondDelay, solventDelay, solventDelay))
+		if int(self.esr) != 0:
+			raise HP5971StatusException('Bad status register: ' + str(self.esr))
+		return self.esr
+
 	def runTableOverride():
 		self.esr = self.br.cmd(self.dev ,":REP:PROG #18SCN:STRT;*ESR?")
 		if int(self.esr) != 0:
