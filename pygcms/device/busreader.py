@@ -63,12 +63,12 @@ class BusReader():
 		device.timeout=10000
 		device.send_end=False
 		nulhdr = bytes(25)
-		device.write_raw(nulhdr)
-		self.logl('written 25')
 		fname = "59XXII.BIN"
 		bsize = os.path.getsize(fname)
 		bperc =  100.0* (4096.0 / bsize)
 		with open(fname, "rb") as binary_file:
+			device.write_raw(nulhdr)
+			self.logl('written 25')
 			data = binary_file.read(4096)
 			while len(data) > 0:
 				if len(data) < 4096:
