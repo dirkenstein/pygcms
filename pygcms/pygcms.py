@@ -28,6 +28,8 @@ import scipy.interpolate
 
 from pygcms.gui.qdictparms import QParamArea, QStatusArea
 from pygcms.gui.qdictionarytree import DictionaryTreeWidget
+from pygcms.gui.qdictlisteditor import QDictListEditor, getSequenceEditorWindow
+
 from pygcms.device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
 class MainWindow(QMainWindow):
@@ -52,6 +54,7 @@ class MainWindow(QMainWindow):
 				self.log_mdi = None			
 				self.logText= None	
 				self.method = None
+				self.sequence = None
 				self.tuning_modified = False
 				self.method_modified = False
 				self.devs = None
@@ -190,7 +193,25 @@ class MainWindow(QMainWindow):
 												file_choices)
 				if path:
 						self.loadMethFile(path)
-		
+
+		def save_sequence(self):
+				file_choices = "JSON (*.json)|*.json"
+				
+				path, choice = QFileDialog.getSaveFileName(self, 
+												'Save sequence file', '', 
+												file_choices)
+				if path:
+					self.saveSeqFile(path)
+
+		def load_sequence(self):
+				file_choices = "JSON (*.json);;All Files (*)"
+				
+				path, choices = QFileDialog.getOpenFileName(self, 
+												'Load sequnce file', '', 
+												file_choices)
+				if path:
+						self.loadSeqFile(path)
+	
 		def upd_parms(self):
 			if self.methodWindow:
 				self.updMethodParams()		
@@ -246,6 +267,39 @@ class MainWindow(QMainWindow):
 			
 			self.setCurrentFile(path)
 			self.statusBar().showMessage('Loaded %s' % path, 2000)
+
+		def saveSeqFile(self, path):
+			if self.sequence:
+				try:
+					f = open(path, "w")
+					f.write(json.dumps(self.sequence, indent=4))
+					f.close()
+				except Exception as e:
+					self.statusBar().showMessage('Failed to save %s : %s' % (path, str(e)), 4000)
+					return
+				self.statusBar().showMessage('Saved to %s' % path, 2000)
+				self.sequence_modified = False
+			else:
+				self.statusBar().showMessage('No sequence to save...', 2000)
+
+		def loadSeqFile(self, path):
+			try:
+				f = open(path, "r")
+				sparms = f.read()
+				f.close()
+			except Exception as e:
+				self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
+				return
+			self.sequence = json.loads(sparms)
+			self.sequence_modified = False
+
+			self.seqpath = path
+			self.seqname = MainWindow.strippedName(self.seqpath)
+			#self.upd_parms()
+			
+			#self.setCurrentFile(path)
+			self.statusBar().showMessage('Loaded %s' % path, 2000)
+
 
 		def save_spectrum(self):
 				file_choices = "BIN (*.bin)|*.bin"
@@ -406,6 +460,31 @@ class MainWindow(QMainWindow):
 			self.method_modified = True
 			self.upd_parms()
 
+		def sequence_window(self):
+			if not self.sequence:
+				self.statusBar().showMessage('Error: No Sequence Loaded', 10000)
+			else:
+				path = self.seqpath
+				seq = self.sequence['Sequence']
+				MainWindow.count = MainWindow.count+1
+				sub = QMdiSubWindow()
+				#submain = QScrollArea()
+				#sub.setWidget(submain)
+				sub.setWindowTitle(str(MainWindow.count) + ": Sequence : " + MainWindow.strippedName(path))
+				sub.setGeometry(70, 150, 1326, 291)
+				self.editor = getSequenceEditorWindow(seq)
+				self.editor.getModel().dataChanged.connect(self.seqUpdated)
+				sub.setWidget(self.editor)
+				
+				#	submain.setWidget(tabs)
+				self.mdi.addSubWindow(sub)
+				#self.methodWindow = submain
+				self.sequenceWindow = self.editor
+				self.sequence_mdi = sub
+				sub.show()
+		def seqUpdated(self):
+			print("seq updated")
+	
 		def log_window(self, q):
 			if not self.logWindow:
 				MainWindow.count = MainWindow.count+1
@@ -556,6 +635,12 @@ class MainWindow(QMainWindow):
 				save_method_action = self.create_action("&Save Method",
 						shortcut=None, slot=self.save_method, 
 						tip="Save method parameters")
+				load_sequence_action = self.create_action("&Load Sequence",
+						shortcut=None, slot=self.load_sequence, 
+						tip="Load sequence parameters")
+				save_sequence_action = self.create_action("&Save Sequence",
+						shortcut=None, slot=self.save_sequence, 
+						tip="Save sequence parameters")
 
 				load_tuning_action = self.create_action("&Load Tuning",
 						shortcut=None, slot=self.load_tuning, 
@@ -569,6 +654,7 @@ class MainWindow(QMainWindow):
 				self.add_actions(self.file_menu, 
 						(load_file_action, save_spectrum_action, save_file_action, 
 						load_method_action,save_method_action,
+						load_sequence_action,save_sequence_action,
 						load_tuning_action, save_tuning_action, None, quit_action))
 				self.separatorAct = self.file_menu.addSeparator() 
 				self.separatorAct.setVisible(False)
@@ -590,6 +676,9 @@ class MainWindow(QMainWindow):
 				new_method_action = self.create_action("&Method Window", shortcut=None, 
 					slot=self.method_window, 
 					tip="Launch method window")
+				new_sequence_action = self.create_action("&Sequence Window", shortcut=None, 
+					slot=self.sequence_window, 
+					tip="Launch sequence window")
 				cascade_window_action = self.create_action("&Cascade", shortcut=None, 
 					slot=self.cascade_window, tip=None) 
 				tile_window_action = self.create_action("&Tile", shortcut=None, 
@@ -597,8 +686,8 @@ class MainWindow(QMainWindow):
 				log_window_action = self.create_action("Show Log", shortcut=None, 
 					slot=self.log_window, tip=None)
 				self.add_actions(self.window_menu, (new_instrument_action, new_scan_action, new_tune_action, 
-						new_method_action, cascade_window_action, 
-						tile_window_action, log_window_action))
+						new_method_action, new_sequence_action,
+						cascade_window_action, tile_window_action, log_window_action))
 				self.help_menu = self.menuBar().addMenu("&Help")
 				about_action = self.create_action("&About", 
 						shortcut='F1', slot=self.on_about, 
