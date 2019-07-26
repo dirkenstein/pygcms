@@ -31,31 +31,35 @@ x: checkbox
 n: index column (1..n)
 """
 class QDictListEditor(QWidget):
-		def __init__(self, dataList, defaultLine, header, theTypes, choices, editables, ranges, saves, *args):
+		def __init__(self, dispName, dataList,defn, *args):
 				QWidget.__init__(self, *args)
 				# setGeometry(x_pos, y_pos, width, height)
 				#self.setGeometry(70, 150, 1326, 291)
 				
-				self.setWindowTitle("Sequence Editor")
-
-				self.table_model = QDictListTableModel(self, dataList, header, theTypes, editables)
+				self.setWindowTitle(dispName)
+				for d in defn:
+					for l in dataList:
+						if not d[0] in l:
+							l.update ({d[0]: d[3]})
+				self.table_model = QDictListTableModel(self, dataList, defn)
 				self.table_view = QTableView()
 				self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
 				#self.table_view.setSelectionMode(QAbstractItemView.SingleSelection)
 				self.table_view.setSelectionMode(QAbstractItemView.SingleSelection)
 				self.table_view.setSelectionBehavior(QAbstractItemView.SelectRows)
-				self.defaultLine = defaultLine
-				for x in range(len(header)):
-					if theTypes[x] == "c":
-						self.table_view.setItemDelegateForColumn(x, ComboDelegate(self,choices[x]))
-					elif  theTypes[x] == "p":
-						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,ranges[x]))
-					elif  theTypes[x] == "d":
-						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,ranges[x], True))
-					elif  theTypes[x] == "F":
-						self.table_view.setItemDelegateForColumn(x, FileSelectionDelegate(self, directory=False, save= x in saves))
-					if theTypes[x] in ["c", "p", "d"]:
+				self.defaultLine = { c[0]: c[3] for c in defn }
+				for x in range(len(defn)):
+					t = defn [x][1]
+					if t== "c":
+						self.table_view.setItemDelegateForColumn(x, ComboDelegate(self,defn[x][4]))
+					elif  t == "p":
+						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][4]))
+					elif t == "d":
+						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][4], True))
+					elif  t == "F":
+						self.table_view.setItemDelegateForColumn(x, FileSelectionDelegate(self, directory=False, save=defn[x][4]))
+					if t in ["c", "p", "d"]:
 						for row in range( len(dataList) ):
 							self.table_view.openPersistentEditor(self.table_model.index(row, x))
 				# make combo boxes editable with a single-click:
@@ -86,8 +90,8 @@ class QDictListEditor(QWidget):
 				
 				self.setLayout(layout)
 
-		def update_model(self, dataList, header, theTypes, editables):
-				self.table_model2 = QDictListTableModel(self, dataList, header, theTypes, editables)
+		def update_model(self, dataList, defn):
+				self.table_model2 = QDictListTableModel(self, dataList, defn)
 				self.table_view.setModel(self.table_model2)
 				self.table_view.update()
 
@@ -227,13 +231,14 @@ class QDictListTableModel(QAbstractTableModel):
 		keep the method names
 		they are an integral part of the model
 		"""
-		def __init__(self, parent, mylist, header, theTypes,editables,  *args):
+		def __init__(self, parent, mylist, defn,  *args):
 				QAbstractTableModel.__init__(self, parent, *args)
 				self.mylist = mylist
-				self.header = header
+				self.header = [row[0] for row in defn]
 				self.change_flag = True
-				self.tlist = theTypes
-				self.editables = editables
+				self.tlist = [row[1] for row in defn]
+				self.editables = [c for c, row in enumerate(defn) if row[2]]
+				#print(self.editables)
 				# self.rowCheckStateMap = {}
 
 		def setDataList(self, mylist):
@@ -327,7 +332,6 @@ class QDictListTableModel(QAbstractTableModel):
 						return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsUserCheckable
 				elif index.column() in self.editables and self.tlist[index.column()] != "n":
 						return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
-
 				else:
 						return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
@@ -360,36 +364,6 @@ class QDictListTableModel(QAbstractTableModel):
 				self.dataChanged.emit(index, index)
 				return True
 
-def getSequenceEditorWindow(seqlist):
-	header = ["Sel", "Line", "Location", "Injector", "SampleName", "Method","SampleType", "DataFile", 
-		"SampleAmount", "ISTDAmount", "Multiplier", "Dilution", "InjVolume"]
-	sampleTypes = ["Sample", "Blank","Calibration", "Keyword", "QC", "RearSamp", "RearCal"]
-	defline={
-					"Sel":False,
-					"Line": 1,
-					"Location": 1,
-					"Injector": 1,
-					"SampleName": "",
-					"Method": "",
-					"SampleType": "Sample",
-					"DataFile": "",
-					"SampleAmount": 0.0,
-					"ISTDAmount": 0.0,
-					"Multiplier": 1,
-					"Dilution": 1,
-					"InjVolume": 1
-			}
-
-	for s in seqlist:
-		s.update ({"Sel": False})
-	theTypes = ["x", "n", "p", "p", "s", "F", "c", "F", "d", "d", "d", "d", "p"] 
-	theChoices = { 6: sampleTypes }
-	editables = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]  
-	defFloatRange = [0, 1000, 0.01, 5]
-	theRanges = { 2: [1, 100, 1], 3: [1, 2, 1], 8:defFloatRange, 9:defFloatRange, 
-		10:defFloatRange, 11:defFloatRange, 12:[1, 10, 1]}
-	theSaves = [7]
-	return QDictListEditor(seqlist, defline, header, theTypes, theChoices, editables, theRanges, theSaves )
 
 if __name__ == '__main__':
 		app = QApplication([])
@@ -398,7 +372,7 @@ if __name__ == '__main__':
 		seqs = f.read()
 		seq = json.loads(seqs)
 		seqlist = seq['Sequence']
-
-		win = getSequenceEditorWindow(seqlist)
+		defn = seq['Definition']
+		win = QDictListEditor("Sequence Editor",seqlist, defn)
 		win.show()
 		app.exec_()

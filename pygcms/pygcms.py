@@ -28,7 +28,7 @@ import scipy.interpolate
 
 from pygcms.gui.qdictparms import QParamArea, QStatusArea
 from pygcms.gui.qdictionarytree import DictionaryTreeWidget
-from pygcms.gui.qdictlisteditor import QDictListEditor, getSequenceEditorWindow
+from pygcms.gui.qdictlisteditor import QDictListEditor
 
 from pygcms.device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
 
@@ -151,7 +151,7 @@ class MainWindow(QMainWindow):
 												'Save tuning file', '', 
 												file_choices)
 				if path:
-					saveTunFile(path)
+					self.saveTunFile(path)
 		def load_tuning(self):
 				file_choices = "JSON (*.json);Tuning (*.U);All Files (*)"
 				
@@ -162,7 +162,7 @@ class MainWindow(QMainWindow):
 						if path.endswith(".json"): 
 							f = open(path, "r")
 							tparms = f.read()
-							self.upd_tuning(json.loads(tparms))
+							self.upd_tuning(json.loads(tparms)['MSParms'])
 						elif path.endswith(".U"):
 							f = open(path, "rb")
 							tbin = f.read()
@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
 		def saveTunFile(self, path):
 			try:
 				f = open(path, "w")
-				f.write(json.dumps(self.msparms, indent=4))
+				f.write(json.dumps({"MSParms" : self.msparms}, indent=4))
 				f.close()
 			except Exception as e:
 				self.statusBar().showMessage('Failed to save %s : %s' % (path, str(e)), 4000)
@@ -350,7 +350,7 @@ class MainWindow(QMainWindow):
 				f = open(fl, "r")
 				tparms = f.read()
 				f.close()
-				self.msparms = json.loads(tparms)
+				self.msparms = json.loads(tparms)['MSParms']
 				self.tunpath = fl
 				#try:
 				#	f = open("devices.json", "r")
@@ -466,13 +466,14 @@ class MainWindow(QMainWindow):
 			else:
 				path = self.seqpath
 				seq = self.sequence['Sequence']
+				defn = self.sequence ['Definition']
 				MainWindow.count = MainWindow.count+1
 				sub = QMdiSubWindow()
 				#submain = QScrollArea()
 				#sub.setWidget(submain)
 				sub.setWindowTitle(str(MainWindow.count) + ": Sequence : " + MainWindow.strippedName(path))
 				sub.setGeometry(70, 150, 1326, 291)
-				self.editor = getSequenceEditorWindow(seq)
+				self.editor = QDictListEditor("Sequence Editor", seq, defn)
 				self.editor.getModel().dataChanged.connect(self.seqUpdated)
 				sub.setWidget(self.editor)
 				
