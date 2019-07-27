@@ -4,19 +4,22 @@
             "Sel",
             "x",
             false,
-            false
+            false,
+            true
         ],
         [
             "Line",
             "n",
             false,
-            1
+            1,
+            false
         ],
         [
             "Location",
             "p",
             true,
             1,
+            false,
             [
                 1,
                 100,
@@ -28,6 +31,7 @@
             "p",
             true,
             1,
+            false,
             [
                 1,
                 2,
@@ -38,13 +42,15 @@
             "SampleName",
             "s",
             true,
-            ""
+            "",
+            false
         ],
         [
             "Method",
             "F",
             true,
             "",
+            false,
             false
         ],
         [
@@ -52,6 +58,7 @@
             "c",
             true,
             "Sample",
+            false,
             [
                 "Sample",
                 "Blank",
@@ -67,6 +74,7 @@
             "F",
             true,
             "",
+            false,
             true
         ],
         [
@@ -74,6 +82,7 @@
             "d",
             true,
             0.0,
+            false,
             [
                 0,
                 1000,
@@ -86,6 +95,7 @@
             "d",
             true,
             0.0,
+            false,
             [
                 0,
                 1000,
@@ -98,6 +108,7 @@
             "d",
             true,
             1.0,
+            false,
             [
                 0,
                 1000,
@@ -110,6 +121,7 @@
             "d",
             true,
             1.0,
+            false,
             [
                 0,
                 1000,
@@ -122,6 +134,7 @@
             "p",
             true,
             1,
+            false,
             [
                 1,
                 10,
@@ -142,7 +155,8 @@
             "ISTDAmount": 0.0,
             "Multiplier": 1,
             "Dilution": 1,
-            "InjVolume": 1
+            "InjVolume": 1,
+            "Sel": false
         },
         {
             "Line": 2,
@@ -156,7 +170,8 @@
             "ISTDAmount": 0.0,
             "Multiplier": 1,
             "Dilution": 1,
-            "InjVolume": 1
+            "InjVolume": 1,
+            "Sel": false
         },
         {
             "Line": 3,
@@ -170,21 +185,23 @@
             "ISTDAmount": 0.0,
             "Multiplier": 1,
             "Dilution": 1,
-            "InjVolume": 1
+            "InjVolume": 1,
+            "Sel": false
         },
         {
             "Line": 4,
-            "Location": 4,
+            "Location": 7,
             "Injector": 1,
             "SampleName": "Blank Methanol",
             "Method": "eliquid.json",
-            "SampleType": "Blank",
+            "SampleType": "Sample",
             "DataFile": "blank.MS",
             "SampleAmount": 0.0,
             "ISTDAmount": 0.0,
             "Multiplier": 1,
             "Dilution": 1,
-            "InjVolume": 1
+            "InjVolume": 1,
+            "Sel": false
         }
     ]
 }

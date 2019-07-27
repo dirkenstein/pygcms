@@ -237,7 +237,7 @@ if __name__=='__main__':
 
 		app = QtWidgets.QApplication(sys.argv)
 		
-		f = open("eliquid.json")
+		f = open("test.json")
 		j = f.read()
 		f.close()
 		d = json.loads(j)

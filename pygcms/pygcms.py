@@ -29,8 +29,10 @@ import scipy.interpolate
 from pygcms.gui.qdictparms import QParamArea, QStatusArea
 from pygcms.gui.qdictionarytree import DictionaryTreeWidget
 from pygcms.gui.qdictlisteditor import QDictListEditor
+import pygcms.gui.util as gutil 
 
 from pygcms.device.specthreads import threadRunner, initThread, statusThread, scanThread, tripleScanThread, runProgressThread
+import copy
 
 class MainWindow(QMainWindow):
 		MaxRecentFiles = 5
@@ -55,8 +57,10 @@ class MainWindow(QMainWindow):
 				self.logText= None	
 				self.method = None
 				self.sequence = None
+				self.seqname = ''
 				self.tuning_modified = False
 				self.method_modified = False
+				self.sequence_modified = False
 				self.devs = None
 				self.loadparam()
 				self.create_recent_files()
@@ -152,6 +156,7 @@ class MainWindow(QMainWindow):
 												file_choices)
 				if path:
 					self.saveTunFile(path)
+					
 		def load_tuning(self):
 				file_choices = "JSON (*.json);Tuning (*.U);All Files (*)"
 				
@@ -159,22 +164,7 @@ class MainWindow(QMainWindow):
 												'Load tuning file', '', 
 												file_choices)
 				if path:
-						if path.endswith(".json"): 
-							f = open(path, "r")
-							tparms = f.read()
-							self.upd_tuning(json.loads(tparms)['MSParms'])
-						elif path.endswith(".U"):
-							f = open(path, "rb")
-							tbin = f.read()
-							tparms = self.method['Method']['MSParms']['Tuning']
-							mparms = self.method['Method']['MSParms']['Mass']
-
-							tune2meth.updatefromTuning(tbin, tparms)
-							tune2meth.updatefromTuning(tbin, mparms)
-						self.tuning_modified = False
-						self.method_modified = True
-						self.tunpath = path
-						self.upd_parms()
+					self.loadFile(path)
 
 		def save_method(self):
 				file_choices = "JSON (*.json)|*.json"
@@ -192,7 +182,7 @@ class MainWindow(QMainWindow):
 												'Load method file', '', 
 												file_choices)
 				if path:
-						self.loadMethFile(path)
+						self.loadFile(path)
 
 		def save_sequence(self):
 				file_choices = "JSON (*.json)|*.json"
@@ -210,7 +200,7 @@ class MainWindow(QMainWindow):
 												'Load sequnce file', '', 
 												file_choices)
 				if path:
-						self.loadSeqFile(path)
+						self.loadFile(path)
 	
 		def upd_parms(self):
 			if self.methodWindow:
@@ -221,6 +211,7 @@ class MainWindow(QMainWindow):
 				self.updTuningParams()
 			if self.instWindow:
 				self.updInstParams()
+				self.updSeqParams()
 				
 		def saveTunFile(self, path):
 			try:
@@ -247,26 +238,62 @@ class MainWindow(QMainWindow):
 				self.method_modified = False
 			else:
 				self.statusBar().showMessage('No method to save...', 2000)
-
-		def loadMethFile(self, path):
-			try:
-				f = open(path, "r")
-				mparms = f.read()
-				f.close()
-			except Exception as e:
-				self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
-				return
-			self.method = json.loads(mparms)
-			self.msparms = self.method['Method']['MSParms']
-			self.tuning_modified = False
-			self.method_modified = False
-
-			self.methpath = path
-			self.methname = MainWindow.strippedName(self.methpath)
-			self.upd_parms()
-			
+		def loadFile(self, path):
+			if path.endswith(".json"): 
+				try:
+					f = open(path, "r")
+					parms = f.read()
+					f.close()
+				except Exception as e:
+					self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
+					return
+				jparms = json.loads(parms)
+				if "Method" in jparms:
+					ftype = "Method File"
+					self.method  = jparms
+					self.msparms = self.method['Method']['MSParms']
+					self.tuning_modified = False
+					self.method_modified = False
+					self.methpath = path
+					self.methname = gutil.strippedName(self.methpath)
+					self.upd_parms()
+				elif "MSParms" in jparms:
+					ftype = "Tuning File"
+					self.upd_tuning(jparms['MSParms'])
+					self.tuning_modified = False
+					self.tunpath = path
+					self.upd_parms()
+				elif "Sequence" in jparms:
+					ftype = "Sequence File"
+					self.sequence = jparms
+					self.sequence_modified = False
+					self.seqpath = path
+					self.seqname = gutil.strippedName(self.seqpath)
+					self.upd_parms()
+				else:
+					self.statusBar().showMessage('Unknown file %s : %s' % (path, ' '.join(jparms.keys()) ), 4000)
+					return
+			elif path.endswith(".U"):
+				try:
+					f = open(path, "rb")
+					bparms = f.read()
+					f.close()
+				except Exception as e:
+					self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
+					return
+				ftype = "Chemstation Tuning File"
+				lparms = copy.deepcopy(self.msparms)
+				tparms = lparms['Tuning']
+				mparms = lparms['Mass']
+				tune2meth.updatefromTuning(bparms, tparms)
+				tune2meth.updatefromTuning(bparms, mparms)
+				self.upd_tuning(lparms)
+				pre, ext = os.path.splitext(path)
+				self.tunpath = pre + '.json'
+				self.upd_parms()
 			self.setCurrentFile(path)
-			self.statusBar().showMessage('Loaded %s' % path, 2000)
+			self.statusBar().showMessage('Loaded %s : %s' % (ftype, path), 2000)
+				
 
 		def saveSeqFile(self, path):
 			if self.sequence:
@@ -282,25 +309,7 @@ class MainWindow(QMainWindow):
 			else:
 				self.statusBar().showMessage('No sequence to save...', 2000)
 
-		def loadSeqFile(self, path):
-			try:
-				f = open(path, "r")
-				sparms = f.read()
-				f.close()
-			except Exception as e:
-				self.statusBar().showMessage('Failed to load %s : %s' % (path, str(e)), 4000)
-				return
-			self.sequence = json.loads(sparms)
-			self.sequence_modified = False
-
-			self.seqpath = path
-			self.seqname = MainWindow.strippedName(self.seqpath)
-			#self.upd_parms()
-			
-			#self.setCurrentFile(path)
-			self.statusBar().showMessage('Loaded %s' % path, 2000)
-
-
+		
 		def save_spectrum(self):
 				file_choices = "BIN (*.bin)|*.bin"
 				
@@ -352,15 +361,7 @@ class MainWindow(QMainWindow):
 				f.close()
 				self.msparms = json.loads(tparms)['MSParms']
 				self.tunpath = fl
-				#try:
-				#	f = open("devices.json", "r")
-				#	tdev = f.read()
-				#	f.close()
-				#	self.devs = json.loads(tdev)['Devs']
-				#except Exception as e:
-				#	#print (e)
-				#	pass
-				##print(self.devs)
+
 		def tune_window(self):
 			if not self.tuningWindow:
 				MainWindow.count = MainWindow.count+1
@@ -415,7 +416,10 @@ class MainWindow(QMainWindow):
 			self.tuningWindow.config_area.load_dictionary(self.msparms)
 		def updInstParams(self):
 			self.instWindow.runner.updateMethod(self.method, self.methname)
-
+		def updSeqParams(self):
+			self.instWindow.updateSequence(self.sequence,  self.seqname)
+			self.instWindow.runner.updateSequence(self.sequence)
+			
 	#for s in self.paramTabList:
 			#	s.updatepboxes()
 		def method_window(self):
@@ -428,7 +432,7 @@ class MainWindow(QMainWindow):
 				sub = QMdiSubWindow()
 				#submain = QScrollArea()
 				#sub.setWidget(submain)
-				sub.setWindowTitle(str(MainWindow.count) + ": Method : " + MainWindow.strippedName(path))
+				sub.setWindowTitle(str(MainWindow.count) + ": Method : " + gutil.strippedName(path))
 				self.tree = DictionaryTreeWidget(meth)
 				self.tree.getModel().dataChanged.connect(self.treeUpdated)
 				sub.setWidget(self.tree)
@@ -471,7 +475,7 @@ class MainWindow(QMainWindow):
 				sub = QMdiSubWindow()
 				#submain = QScrollArea()
 				#sub.setWidget(submain)
-				sub.setWindowTitle(str(MainWindow.count) + ": Sequence : " + MainWindow.strippedName(path))
+				sub.setWindowTitle(str(MainWindow.count) + ": Sequence : " + gutil.strippedName(path))
 				sub.setGeometry(70, 150, 1326, 291)
 				self.editor = QDictListEditor("Sequence Editor", seq, defn)
 				self.editor.getModel().dataChanged.connect(self.seqUpdated)
@@ -484,6 +488,7 @@ class MainWindow(QMainWindow):
 				self.sequence_mdi = sub
 				sub.show()
 		def seqUpdated(self):
+			self.sequence_modified = True
 			print("seq updated")
 	
 		def log_window(self, q):
@@ -524,7 +529,8 @@ class MainWindow(QMainWindow):
 					sub = QMdiSubWindow()
 					self.setDevs()
 					self.setConn()
-					self.instrument = QInstControl(sub, self, self.method, self.methname, 
+					self.instrument = QInstControl(sub, self, self.method, self.sequence, 
+							self.methname, self.seqname,
 							devs=self.devs, host=self.rmthost, lpath=self.loadpath, port=self.rmtport)
 					sub.setWidget(self.instrument)
 					sub.setWindowTitle("Instrument: "+str(MainWindow.count))
@@ -545,8 +551,6 @@ class MainWindow(QMainWindow):
 		def tile_window(self, q):
 			self.mdi.tileSubWindows()
 		
-		def strippedName(fullFileName):
-			return QFileInfo(fullFileName).fileName()
 		def create_main_frame(self):
 				#self.main_frame = QSpectrumScan(self, self, self.msparms)
 				self.mdi = QMdiArea()
@@ -562,7 +566,8 @@ class MainWindow(QMainWindow):
 		def recentfileaction(self, q):
 			action = self.sender()
 			if action:
-				self.loadMethFile(action.data())
+				self.loadFile(action.data())
+				
 		def setCurrentFile(self, fileName):
 				self.curFile = fileName
 				#if self.curFile:
@@ -599,7 +604,7 @@ class MainWindow(QMainWindow):
 				numRecentFiles = min(l, MainWindow.MaxRecentFiles)
 
 				for i in range(numRecentFiles):
-						text = "&%d %s" % (i + 1, MainWindow.strippedName(files[i]))
+						text = "&%d %s" % (i + 1, gutil.strippedName(files[i]))
 						self.recentFileActs[i].setText(text)
 						self.recentFileActs[i].setData(files[i])
 						self.recentFileActs[i].setVisible(True)
@@ -732,10 +737,12 @@ class MainWindow(QMainWindow):
 				msg.setText("Save file before exiting?")
 				if self.method_modified:
 					pth = self.methpath
+					mt = "Method"
 				elif self.tuning_modified:
 					pth = self.tunpath
+					mt = "Tuning"
 				msg.setInformativeText("file: " + pth)
-				msg.setWindowTitle("Save Method")
+				msg.setWindowTitle("Save %s" % mt)
 				#msg.setDetailedText("The details are as follows:")
 				msg.setStandardButtons(QMessageBox.Save |QMessageBox.Close | QMessageBox.Cancel)
 				#msg.buttonClicked.connect(msgbtn)
@@ -747,6 +754,25 @@ class MainWindow(QMainWindow):
 						self.saveMethFile(self.methpath)
 					elif self.tuning_modified:
 						self.saveTunFile(self.tunpath)
+					event.accept()
+				elif retval == QMessageBox.Close:
+					event.accept()	
+				else:
+					event.ignore() # let the window close
+			if self.sequence_modified:
+				msg = QMessageBox()
+				msg.setIcon(QMessageBox.Warning)
+				msg.setText("Save file before exiting?")
+				msg.setInformativeText("file: " + self.seqpath)
+				msg.setWindowTitle("Save Sequence")
+				#msg.setDetailedText("The details are as follows:")
+				msg.setStandardButtons(QMessageBox.Save |QMessageBox.Close | QMessageBox.Cancel)
+				#msg.buttonClicked.connect(msgbtn)
+			
+				retval = msg.exec_()
+				#print "value of pressed message box button:", retval
+				if retval == QMessageBox.Save:
+					self.saveSeqFile(self.seqpath)
 					event.accept()
 				elif retval == QMessageBox.Close:
 					event.accept()	
@@ -882,7 +908,7 @@ class QTuneWindow(QWidget, Loggable):
 			self.spectrum = [None, None, None]
 			self.ledbox = QLedPanel()
 
-			self.runner = threadRunner(self, main, devs, None, params, None, None, tripleScanThread, 
+			self.runner = threadRunner(self, main, devs, None, None, params, None, None, tripleScanThread, 
 				self.showNewScan, self.showNewTune, logl=self.logl, forRun=False, host=host, loadpath=lpath, port=port)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
@@ -941,6 +967,7 @@ class QTuneWindow(QWidget, Loggable):
 			self.scan_button.clicked.connect(self.runner.on_scan)
 
 			self.run_button = None
+			self.seq_button = None
 			self.tune_button = QPushButton("&Tune")
 			self.tune_button.clicked.connect(self.runner.on_tune)
 
@@ -1196,7 +1223,7 @@ class QSpectrumScan(QWidget, Loggable):
 			self.main = main
 			self.spectrum = None
 		
-			self.runner = threadRunner(self, main, devs, None, params, None, None, scanThread, 
+			self.runner = threadRunner(self, main, devs, None, None, params, None, None, scanThread, 
 				self.showNewScan, None, logl=self.logl, forRun=False, host=host, loadpath=lpath, port=port)
 			# Create the mpl Figure and FigCanvas objects. 
 			# 5x4 inches, 100 dots-per-inch
@@ -1409,14 +1436,16 @@ class QLedPanel(QWidget):
 		self.leds[ledno].turn_off()
 
 class QInstControl(QWidget,Loggable):
-		def __init__(self, parent = None, main=None, method=None, methname ='', devs=None, host=None, lpath=None, port=18812):
+		def __init__(self, parent = None, main=None, method=None, sequence = None, methname ='', seqname='', devs=None, host=None, lpath=None, port=18812):
 			super().__init__(parent)
 			self.method = method
 			self.methname = methname
 			self.fname = ''
 			self.closed = False
 			self.main = main
-			self.runner = threadRunner(self, main, devs,  method, None, self.methname, self.fname, None, self.showNewScan, 
+			self.sequence = sequence
+			self.seqname = seqname
+			self.runner = threadRunner(self, main, devs,  method, sequence, None, self.methname, self.fname, None, self.showNewScan, 
 																None, logl=self.logl, forRun=True, host=host, loadpath=lpath, port=port)
 
 			vboxscan = QVBoxLayout()
@@ -1467,19 +1496,38 @@ class QInstControl(QWidget,Loggable):
 			
 			vbox.addWidget(dummy)
 			hb2 = QHBoxLayout()
+			plabel = QLabel ("Sample File")
 			self.path_field = QLineEdit()
 			self.path_field.editingFinished.connect(self.setPath)
 			self.path_button = QPushButton ('Browse')
 			self.path_button.clicked.connect(self.fileDlg)
 			
+			hb2.addWidget(plabel)
 			hb2.addWidget(self.path_field)
 			hb2.addWidget(self.path_button)
 			
 			vbox.addLayout(hb2)
-			
+	
+			hb3 = QHBoxLayout()
+			self.seqlabel = QLabel ("Sequence")
+
+			self.sequence_field = QLineEdit(seqname)
+			self.sequence_field.setDisabled(True)
+		
+			hb3.addWidget (self.seqlabel)
+			hb3.addWidget (self.sequence_field)
+		
+			vbox.addLayout(hb3)
+		
 			self.reinit_button =QPushButton('Reinit')
 			self.reinit_button.clicked.connect(self.runner.on_init)
 			vbox.addWidget(self.reinit_button)
+			
+			
+			self.seq_button = QPushButton('Run Sequence')
+			self.seq_button.clicked.connect(self.runner.on_seq)
+			vbox.addWidget(self.seq_button)
+			
 			
 			self.run_button = QPushButton('Run')
 			self.run_button.clicked.connect(self.runner.on_run)
@@ -1489,6 +1537,11 @@ class QInstControl(QWidget,Loggable):
 			self.stop_button.clicked.connect(self.runner.on_stop)
 			vbox.addWidget(self.stop_button)
 			
+			if not sequence:
+				self.sequence_field.setVisible(False)
+				self.seqlabel.setVisible(False)
+				self.seq_button.setVisible(False)
+
 			self.scan_button = None
 			self.tune_button = None
 
@@ -1600,6 +1653,18 @@ class QInstControl(QWidget,Loggable):
 				self.on_draw()
 				self.last_rt = rt
 		
+		def updateSequence(self, sequence, seqname):
+			if sequence:
+				doSeq = True
+			else:
+				doSeq = False
+			self.sequence = sequence
+			self.seqname = seqname
+			self.sequence_field.setText(seqname)
+			self.sequence_field.setVisible(doSeq)
+			self.seqlabel.setVisible(doSeq)
+			self.seq_button.setVisible(doSeq)
+
 		
 def main():
 	app = QApplication(sys.argv)

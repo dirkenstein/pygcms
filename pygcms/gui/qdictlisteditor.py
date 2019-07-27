@@ -52,13 +52,13 @@ class QDictListEditor(QWidget):
 				for x in range(len(defn)):
 					t = defn [x][1]
 					if t== "c":
-						self.table_view.setItemDelegateForColumn(x, ComboDelegate(self,defn[x][4]))
+						self.table_view.setItemDelegateForColumn(x, ComboDelegate(self,defn[x][5]))
 					elif  t == "p":
-						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][4]))
+						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][5]))
 					elif t == "d":
-						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][4], True))
+						self.table_view.setItemDelegateForColumn(x, SpinDelegate(self,defn[x][5], True))
 					elif  t == "F":
-						self.table_view.setItemDelegateForColumn(x, FileSelectionDelegate(self, directory=False, save=defn[x][4]))
+						self.table_view.setItemDelegateForColumn(x, FileSelectionDelegate(self, directory=False, save=defn[x][5]))
 					if t in ["c", "p", "d"]:
 						for row in range( len(dataList) ):
 							self.table_view.openPersistentEditor(self.table_model.index(row, x))
@@ -141,7 +141,7 @@ class ComboDelegate(QItemDelegate):
 				editor.setCurrentIndex(num)
 		def setModelData(self, editor, model, index):
 				value = editor.currentText()
-				model.setData(index, QVariant(value), Qt.DisplayRole)
+				model.setData(index, QVariant(value).value(), Qt.DisplayRole)
 		def updateEditorGeometry(self, editor, option, index):
 				editor.setGeometry(option.rect)
 
@@ -175,7 +175,7 @@ class SpinDelegate(QItemDelegate):
 				editor.setValue(value)
 		def setModelData(self, editor, model, index):
 				value = editor.value()
-				model.setData(index, QVariant(value), Qt.DisplayRole)
+				model.setData(index, QVariant(value).value(), Qt.DisplayRole)
 		def updateEditorGeometry(self, editor, option, index):
 				editor.setGeometry(option.rect)
 
@@ -238,6 +238,7 @@ class QDictListTableModel(QAbstractTableModel):
 				self.change_flag = True
 				self.tlist = [row[1] for row in defn]
 				self.editables = [c for c, row in enumerate(defn) if row[2]]
+				self.sels = [c for c, row in enumerate(defn) if row[4]]
 				#print(self.editables)
 				# self.rowCheckStateMap = {}
 
@@ -255,8 +256,9 @@ class QDictListTableModel(QAbstractTableModel):
 		
 		def lastSel(self):
 			for i in reversed(self.mylist):
-				if i["Sel"]: 
-					return self.mylist.index(i) +1
+				for c in self.sels:
+					if i[self.header[c]]: 
+						return self.mylist.index(i) +1
 			return len(self.mylist)
 			
 		def addRow(self, line):
@@ -267,8 +269,9 @@ class QDictListTableModel(QAbstractTableModel):
 		
 		def delRows(self):
 				for i in reversed(self.mylist):
-					if i["Sel"]: 
-						self.mylist.remove(i)
+					for c in self.sels:
+						if i[self.header[c]]:
+							self.mylist.remove(i)
 				self.renumber()
 				self.updateModel()
 			

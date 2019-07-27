@@ -12,6 +12,9 @@ class Node(object):
 				self._step = -1
 				self._floc = -1
 				self._ftype = None
+				self._table = None
+				self._tdefn = None
+
 				if parent is not None:
 						parent.addChild(self)
 
@@ -132,7 +135,21 @@ class Node(object):
 						self._floc = floc
 				return locals()
 		floc = property(**floc())
- 
+		def table():
+				def fget(self):
+						return self._table
+				def fset(self, table):
+						self._table = table
+				return locals()
+		table = property(**table())
+		def tdefn():
+				def fget(self):
+						return self._tdefn
+				def fset(self, tdefn):
+						self._tdefn = tdefn
+				return locals()
+		tdefn = property(**tdefn())
+		
 		def child(self, row):
 				return self._children[row]
 
