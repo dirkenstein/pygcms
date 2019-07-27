@@ -7,7 +7,6 @@
 
 from setuptools import setup
 from glob import glob
-import matplotlib
 import sys
 import os
 
@@ -41,7 +40,7 @@ options = {
                  'pygcms.device', 'pygcms.msfile', 'pygcms.calc'],
     'scripts': ['gcms.py','spec.py'],
     'include_package_data': False,
-    'install_requires': ['numpy', 'scipy', 'matplotlib', 'peakutils','mollusk', 'pandas', 'PyQt5', 'pyqt_led'],
+    'install_requires': ['numpy', 'scipy', 'matplotlib', 'peakutils','mollusk', 'pandas', 'rpyc', 'PyQt5', 'pyqt_led'],
 }
 
 #all the magic happens right here

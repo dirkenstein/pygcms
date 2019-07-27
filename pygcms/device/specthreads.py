@@ -90,7 +90,7 @@ class threadRunner():
 				self.parent.reinit_button.setEnabled(True)
 			if self.parent.tune_button:
 				self.parent.tune_button.setEnabled(True)
-			if self.parent.seq_button:
+			if self.parent.seq_button  and self.parent.sequence:
 				self.parent.seq_button.setEnabled(True)
 				
 		def enableStartButtons(self):
@@ -100,7 +100,7 @@ class threadRunner():
 				self.parent.scan_button.setEnabled(True)
 			if self.parent.tune_button:
 				self.parent.tune_button.setEnabled(True)
-			if self.parent.seq_button:
+			if self.parent.seq_button and self.parent.sequence:
 				self.parent.seq_button.setEnabled(True)
 				
 		def disableIndicators(self):
@@ -119,7 +119,7 @@ class threadRunner():
 				self.init_thread_o = initThread(self.method, self.logl, devs=self.devs, forRun=self.forRun, path=self.loadpath, host=self.rmthost, port=self.rmtport)
 				self.init_thread_o.progress_update.connect(self.updateProgressBar)
 				self.init_thread_o.inst_status.connect(self.instStatus)
-				self.init_thread_o.init_status.connect(self.setInitialized)
+				self.init_thread_o.init_done.connect(self.setInitialized)
 				self.init_thread_o.moveToThread(self.init_thread)
 				self.init_thread_o.run_init.connect(self.init_thread_o.doInit)
 				self.init_thread_o.run_stop.connect(self.init_thread_o.doStop)
@@ -127,14 +127,15 @@ class threadRunner():
 				#self.init_thread.started.connect(self.init_thread_o.doInit)
 				self.init_thread.start()
 
-		def on_init(self):
-				#self.logl("Reinit")
+		def doInitButtons(self):
 				self.init =False
 				self.disableAllButtons()
 				self.disableIndicators()
 				self.main.statusBar().showMessage('Initializing..', 1000)
 				QThread.yieldCurrentThread()
 				
+		def on_init(self):
+				self.doInitButtons()				
 				if not self.init_thread.isRunning():
 					#self.logl("No init Thread")
 					self.initInitThread()
@@ -199,7 +200,7 @@ class threadRunner():
 
 		def on_seq(self):
 			if self.sequence:
-				self.seq_run = True
+				self.run_seq = True
 				self.disableStartButtons()
 				self.main.progress.setValue(0)
 				self.main.statusBar().showMessage('Sequence..', 2000)
@@ -210,13 +211,15 @@ class threadRunner():
 				
 				if not self.sequence_thread.isRunning():
 					
-					self.sequence_thread_o = sequenceThread(self.sequence, self.init_thread_o, self.progress_thread_o, self.logl)
+					self.sequence_thread_o = sequenceThread(self.sequence, self.method, self.methname, self.init_thread_o, self.progress_thread_o, self.logl)
 					self.sequence_thread_o.progress_update.connect(self.updateProgressBar)
 					self.sequence_thread_o.seq_done.connect(self.showSeqStatus)
+					self.sequence_thread_o.seq_stop.connect(self.sequence_thread_o.doStop)
 
 					self.sequence_thread_o.moveToThread(self.sequence_thread)
 					self.sequence_thread_o.seq_progress.connect(self.sequence_thread_o.doSeq)
-					self.sequence_thread_o.seq_stop.connect(self.sequence_thread_o.endSeq)
+									
+					self.sequence_thread_o.seq_change.connect(self.updateSeqDisplay)
 					#self.run_stop.connect(self.endRun)
 
 					self.sequence_thread.start()
@@ -232,8 +235,13 @@ class threadRunner():
 			else:
 				self.main.statusBar().showMessage('Sequence Failed: ' + emsg, 10000)
 				self.main.progress.setValue(0)
-			self.seq_run = False
+			self.run_seq = False
+			self.doInitButtons()
 
+		def updateSeqDisplay(self, method, datafile, samplename):
+				self.parent.path_field.setText(datafile)
+				self.parent.method_field.setText(gutil.strippedName(method))
+				self.parent.sample_field.setText(samplename)
 
 		def on_stop(self):
 			if self.progress_thread_o:
@@ -291,7 +299,8 @@ class threadRunner():
 				self.hpinj = self.init_thread_o.getInj()
 
 				self.main.progress.setValue(100)
-				self.enableAllButtons()
+				if not self.run_seq:
+					self.enableAllButtons()
 				self.init = True
 				self.doStatusThread()
 			else:
@@ -299,13 +308,14 @@ class threadRunner():
 				self.main.progress.setValue(0)
 				
 		def doGetStatus(self):
-			if (not self.running) and (not self.scanning) and (not self.tuning) and self.init:
+			if ((not self.running) and (not self.scanning) and
+				(not self.tuning) and (not self.run_seq) and self.init):
 				self.main.progress.setValue(0)
 				self.disableStartButtons()
 				self.status_thread_o.run_status.emit(True)
 
 		def onStatusUpdate(self, conf):
-			if not self.running and not self.scanning:
+			if not self.running and not self.scanning and not self.run_seq:
 				self.enableAllButtons()
 
 			if not 'Error' in conf:
@@ -318,7 +328,7 @@ class threadRunner():
 				self.main.progress.setValue(0)
 
 		def onStatusUpdateGc(self, conf):
-			if not self.running:
+			if not self.running and not self.run_seq:
 				self.enableAllButtons()
 
 			if not 'Error' in conf:
@@ -340,7 +350,8 @@ class threadRunner():
 #				self.hpgc = self.init_thread_o.getGc()
 
 		def showRunStatus(self,ok, emsg):
-			self.enableStartButtons()
+			if not self.run_seq:
+				self.enableStartButtons()
 			if ok:
 				self.main.statusBar().showMessage('Run Done: ' + emsg, 2000)
 				self.main.progress.setValue(100)
@@ -456,7 +467,7 @@ class threadRunner():
 				self.sequence_thread.terminate()
 		
 class initThread(QObject):
-		init_status = pyqtSignal(bool,str)
+		init_done = pyqtSignal(bool,str)
 		progress_update = pyqtSignal(int)
 		inst_status = pyqtSignal(bool, bool, bool)
 		run_init = pyqtSignal()
@@ -504,8 +515,8 @@ class initThread(QObject):
 
 		def doInit(self):
 			#init = False
-			time.sleep(2)
-			stime = 2.0
+			time.sleep(1)
+			stime = 1.0
 			while not self.init:
 					if self.host and len(self.host) > 0:
 						try:
@@ -519,7 +530,7 @@ class initThread(QObject):
 							self.brm = self.con.modules['pygcms.device.busreader']
 						except Exception as e:
 							self.logl (e)
-							self.init_status.emit(False, 'Remote Connection Failed: ' +  str(e))
+							self.init_done.emit(False, 'Remote Connection Failed: ' +  str(e))
 							time.sleep(stime)
 							continue
 					else:
@@ -529,7 +540,7 @@ class initThread(QObject):
 						self.progress_update.emit(10)
 					except Exception as e:
 						self.logl (e)
-						self.init_status.emit(False, str(e))
+						self.init_done.emit(False, str(e))
 						time.sleep(stime)
 						continue
 					if not self.init_msd:
@@ -560,7 +571,7 @@ class initThread(QObject):
 							except Exception as e2:
 								self.logl("Could not clear")
 							finally:
-								self.init_status.emit(False, str(e))
+								self.init_done.emit(False, str(e))
 								time.sleep(stime)
 					if not self.init_gc and self.method and self.forRun:
 						try:
@@ -574,7 +585,7 @@ class initThread(QObject):
 								self.logl (e)
 								self.logl(traceback.format_exc())
 
-								self.init_status.emit(False, str(e))
+								self.init_done.emit(False, str(e))
 								time.sleep(stime)
 					if not self.init_inj and self.method and self.forRun:
 						try:	 
@@ -586,12 +597,12 @@ class initThread(QObject):
 						except Exception as e:
 							self.logl (e)
 							self.logl(traceback.format_exc())
-							self.init_status.emit(False, str(e))
+							self.init_done.emit(False, str(e))
 							time.sleep(stime)
 					if self.init_msd and (self.init_inj or not self.method or not self.forRun) and (self.init_gc or not self.method or not self.forRun):
 						self.progress_update.emit(100)
 						self.init = True
-						self.init_status.emit(True, 'OK')
+						self.init_done.emit(True, 'OK')
 
 		def getMsd(self):
 			return self.hpmsd
@@ -890,15 +901,21 @@ class sequenceThread(QObject):
 		seq_done = pyqtSignal(bool, str)
 		seq_progress = pyqtSignal()
 		seq_stop = pyqtSignal()
-
-		def __init__(self, sequence, init_thread_o, progress_thread_o, logl):
+		seq_change = pyqtSignal(str, str, str)
+		def __init__(self, sequence, orig_method, orig_methname, init_thread_o, progress_thread_o, logl):
 			QObject.__init__(self)
 			self.sequence = sequence
 			self.logl = logl
 			self.running = False
 			self.updateThreads( init_thread_o,progress_thread_o)
+			self.init_ok = False
+			self.run_ok = False
+			self.run_done = False
+			self.orig_method = orig_method
+			self.orig_methname = orig_methname
+
 			#self.progress_thread_o.run_done.connect(self.runStatus)
-			#self.init_thread_o.init_status.connect(self.initStatus)
+			#self.init_thread_o.init_done.connect(self.initStatus)
 
 		def updateSequence(self, s):
 			self.sequence = s
@@ -912,11 +929,38 @@ class sequenceThread(QObject):
 					self.loadMethod(l['Method'])
 					self.methname = gutil.strippedName(l['Method'])
 					self.updateMethod(l['SampleName'], l['Location'], l['Injector'],l['InjVolume'])
+					self.init_thread_o.updateMethod( self.method, self.methname)
+					self.init_ok = False
+					#self.init_thread_o.init_done.connect(self.seqReady)
+					self.init_thread_o.run_init.emit()
+					while self.running and not self.init_ok:
+						time.sleep(2)
+						self.logl("waiting for init")
 					self.progress_thread_o.updateMethod( self.method, self.methname)
+					self.progress_thread_o.updateFname( l['DataFile'])
 
+					self.seq_change.emit(l['Method'], l['DataFile'], l['SampleName'])
 					if not self.running:
 						 break
-				self.seq_done.emit(False, "Not Implemented")			
+					
+					self.progress_thread_o.run_progress.emit()
+					self.run_ok = False
+					self.run_done = False
+					self.progress_thread_o.run_progress.emit()
+
+					while self.running and not self.run_ok and not self.run_done:
+						time.sleep(2)
+						self.logl("waiting for run")
+				if self.running:
+					self.seq_done.emit(True, "Sequence done")
+					self.runnimg = False
+				else:
+					self.seq_done.emit(False, "Sequence Aborted")			
+				self.init_thread_o.updateMethod( self.orig_method, self.orig_methname)
+				self.init_thread_o.run_init.emit()
+				self.progress_thread_o.updateMethod( self.orig_method, self.orig_methname)
+				self.progress_thread_o.updateFname(self.orig_fname)
+
 			except Exception as e:
 				self.logl ('Exc ' + str(e))
 				self.logl(traceback.format_exc())
@@ -931,29 +975,34 @@ class sequenceThread(QObject):
 			if "Method" not in self.method:
 				self.logl("Not a method")
 				self.method = None
-			pass
+			
 		def updateMethod(self, samplename, vial, inj, injvolume):
 			self.method['Method']['Header']['SampleName'] = samplename
 			self.method['Method']['Header']['Vial'] = vial
 			self.method['Method']['Injector']['UseInjector'] = inj
 			self.method['Method']['Injector']['Quantity'] = injvolume
 			
-		def endSeq(self):
+		def doStop(self):
 			self.running = False
 		
 		def runStatus(self, ok, msg):
 			self.run_ok = ok
+			self.run_done = True
 			
 		def initStatus(self, ok, msg):
 			self.init_ok = ok
+		
+		def seqReady(self):
+			self.seq_ready = True	
 			
 		def updateThreads(self, init_thread_o, progress_thread_o):
 			self.init_thread_o = init_thread_o
 			self.progress_thread_o = progress_thread_o
 			if self.progress_thread_o:
+				self.orig_fname = self.progress_thread_o.getFname()
 				self.progress_thread_o.run_done.connect(self.runStatus)
 			if self.init_thread_o:
-				self.init_thread_o.init_status.connect(self.initStatus)
+				self.init_thread_o.init_done.connect(self.initStatus)
 				
 class runProgressThread(QObject):
 		progress_update = pyqtSignal(int)
@@ -977,7 +1026,7 @@ class runProgressThread(QObject):
 				self.logl = logl
 				self.fname = fname
 				self.methname = methname
-				self.sequence = sequence
+				#self.sequence = sequence
 				#self.run_progress.connect(self.doRun)
 				#self.run_stop.connect(self.endRun)
 
@@ -999,7 +1048,10 @@ class runProgressThread(QObject):
 			
 		def updateFname(self, fname):
 			self.fname = fname
-
+		
+		def getFname(self):
+			return self.fname
+			
 		def updateParms(self, parms):
 			self.method['Method']['MSParms'] = parms	
 			

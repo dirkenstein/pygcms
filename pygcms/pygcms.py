@@ -1269,6 +1269,7 @@ class QSpectrumScan(QWidget, Loggable):
 
 			self.run_button = None
 			self.tune_button = None
+			self.seq_button = None
 
 
 			
@@ -1516,8 +1517,28 @@ class QInstControl(QWidget,Loggable):
 		
 			hb3.addWidget (self.seqlabel)
 			hb3.addWidget (self.sequence_field)
-		
 			vbox.addLayout(hb3)
+
+			hb4 = QHBoxLayout()
+			self.methlabel = QLabel ("Method")
+
+			self.method_field = QLineEdit(methname)
+			self.method_field.setDisabled(True)
+		
+			hb4.addWidget (self.methlabel)
+			hb4.addWidget (self.method_field)		
+			vbox.addLayout(hb4)
+			
+			hb5 = QHBoxLayout()
+			self.samplabel = QLabel ("Sample")
+
+			self.sample_field = QLineEdit(self.method['Method']['Header']['SampleName'])
+			self.sample_field.setDisabled(True)
+		
+			hb5.addWidget (self.samplabel)
+			hb5.addWidget (self.sample_field)		
+			vbox.addLayout(hb5)
+		
 		
 			self.reinit_button =QPushButton('Reinit')
 			self.reinit_button.clicked.connect(self.runner.on_init)
