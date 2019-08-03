@@ -1123,7 +1123,11 @@ class QTuneWindow(QWidget, Loggable):
 				#self.sels = sels
 				#from scipy.interpolate import UnivariateSpline
 				self.spline[x] = scipy.interpolate.UnivariateSpline(i['m/z'],i['abundance'] - i['abundance'].max()/2,s=0)
-				self.fwhm[x] = abs(self.spline[x].roots()[1]-self.spline[x].roots()[0])
+				roots = self.spline[x].roots()
+				if (len(roots)> 1):
+					self.fwhm[x] = abs(roots[1]-roots[0])
+				else:
+						self.fwhm[x] = 0.0
 				self.canvases[x].draw()
 
 		def ramp_peak(self, x):
