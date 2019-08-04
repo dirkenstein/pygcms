@@ -777,10 +777,12 @@ class tripleScanThread(QObject):
 
 					self.hpmsd.adjScanParms(self.parms['Scan'], pks[2])
 					self.hpmsd.getPartialScan(self.parms, self.progress_update.emit, moreScans=False)	
+					self.hpmsd.calValve(0)
 					spec3 = self.hpmsd.getSpec()
 
 					self.scan_done.emit([spec1, spec2, spec3], pks)
 					self.parms['Scan'].update(old_sparms)
+					
 					self.scan_status.emit(True, 'Complete')
 
 				except hp5971.HP5971Exception as e1:
@@ -791,12 +793,17 @@ class tripleScanThread(QObject):
 					except Exception as e2:
 						errstr = str(e)
 					finally:
-						self.scan_status.emit(False, errstr)
+						try:
+							self.hpmsd.calValve(0)
+						finally:
+							self.scan_status.emit(False, errstr)
 				except Exception as e:
 					self.logl ('Exc ' + str(e))
 					self.logl(traceback.format_exc())
-
-					self.scan_status.emit(False, str(e))
+					try:
+						self.hpmsd.calValve(0)
+					finally:
+						self.scan_status.emit(False, str(e))
 
 		def doStop(self):
 			pass
@@ -859,7 +866,7 @@ class tuningThread(QObject):
 					self.tun.rampXray()
 					self.tun.rampRep()
 					self.tun.rampIon()
-
+					self.hpmsd.calValve(0)
 					parms = self.tun.getParms()
 					f = open("tunnew.json", "w")
 					f.write(json.dumps(parms, indent=4))
@@ -875,12 +882,17 @@ class tuningThread(QObject):
 					except Exception as e2:
 						errstr = str(e)
 					finally:
-						self.tune_done.emit(False, errstr, {})
+						try:
+							self.hpmsd.calValve(0)
+						finally:
+							self.tune_done.emit(False, errstr, {})
 				except Exception as e:
 					self.logl ('Exc ' + str(e))
 					self.logl(traceback.format_exc())
-
-					self.tune_done.emit(False, str(e), {})
+					try:
+						self.hpmsd.calValve(0)
+					finally:
+						self.tune_done.emit(False, str(e), {})
 
 		def doStop(self):
 			pass
