@@ -192,7 +192,7 @@ class threadRunner():
 				self.main.progress.setValue(0)
 				self.main.statusBar().showMessage('Run..', 2000)
 				if not self.progress_thread.isRunning():
-					self.initRunThreaD()
+					self.initRunThread()
 				self.progress_thread_o.run_progress.emit()
 			else:
 				self.main.statusBar().showMessage('File Name Not Set', 10000)
